@@ -1,0 +1,67 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Patient {
+  id          String   @id @default(cuid())
+  firstName   String
+  lastName    String
+  dateOfBirth DateTime @db.Date
+  email       String?
+  phone       String?
+  createdAt   DateTime @default(now())
+
+  orders Order[]
+
+  @@index([lastName, firstName])
+}
+
+model LabTest {
+  id             String   @id @default(cuid())
+  code           String   @unique
+  name           String
+  priceCents     Int
+  currency       String   @default("USD")
+  turnaroundDays Int
+  createdAt      DateTime @default(now())
+
+  orderItems OrderItem[]
+}
+
+enum OrderStatus {
+  PENDING
+}
+
+model Order {
+  id                 String      @id @default(cuid())
+  patientId          String
+  status             OrderStatus @default(PENDING)
+  totalCents         Int
+  currency           String      @default("USD")
+  estimatedReadyDate DateTime    @db.Date
+  createdAt          DateTime    @default(now())
+
+  patient Patient     @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  items   OrderItem[]
+
+  @@index([patientId])
+  @@index([createdAt])
+}
+
+model OrderItem {
+  id                    String @id @default(cuid())
+  orderId               String
+  labTestId             String
+  priceCentsAtOrder     Int
+  turnaroundDaysAtOrder Int
+
+  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  labTest LabTest @relation(fields: [labTestId], references: [id], onDelete: Restrict)
+
+  @@index([orderId])
+}
