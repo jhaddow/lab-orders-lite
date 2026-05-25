@@ -135,12 +135,9 @@ export async function createOrder(
   });
 }
 
-// ---- Status transitions ----------------------------------------------
-//
-// Each transition: load the current order, assert the transition is allowed,
-// update the row, and audit — all in one transaction so a failed audit
+// Each transition loads the current order, asserts the move is allowed,
+// updates the row, and audits, all in one transaction so a failed audit
 // rolls back the status change.
-
 async function transitionOrder(
   orderId: string,
   to: OrderStatus,

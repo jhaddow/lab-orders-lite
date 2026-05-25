@@ -1,11 +1,4 @@
-export type OrderItemInput = {
-  priceCentsAtOrder: number;
-  turnaroundDaysAtOrder: number;
-};
-
-export function calculateOrderTotalCents(
-  items: Pick<OrderItemInput, "priceCentsAtOrder">[],
-): number {
+export function calculateOrderTotalCents(items: { priceCentsAtOrder: number }[]): number {
   if (items.length === 0) {
     throw new Error("Cannot calculate total for an order with no items");
   }
@@ -14,18 +7,16 @@ export function calculateOrderTotalCents(
 
 export function calculateEstimatedReadyDate(
   createdAt: Date,
-  items: Pick<OrderItemInput, "turnaroundDaysAtOrder">[],
+  items: { turnaroundDaysAtOrder: number }[],
 ): Date {
   if (items.length === 0) {
     throw new Error("Cannot calculate ready date for an order with no items");
   }
-  const maxTurnaround = items.reduce((max, item) => Math.max(max, item.turnaroundDaysAtOrder), 0);
+  const maxTurnaround = Math.max(...items.map((i) => i.turnaroundDaysAtOrder));
   const result = new Date(createdAt);
   result.setUTCDate(result.getUTCDate() + maxTurnaround);
   return result;
 }
-
-// ---- Status workflow --------------------------------------------------
 
 export type OrderStatus = "PENDING" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
 
@@ -44,7 +35,6 @@ export class InvalidTransitionError extends Error {
   constructor(from: OrderStatus, to: OrderStatus) {
     super(`Cannot transition order from ${from} to ${to}`);
     this.name = "InvalidTransitionError";
-    Error.captureStackTrace?.(this, InvalidTransitionError);
   }
 }
 
