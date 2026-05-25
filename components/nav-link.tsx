@@ -4,13 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 
-export function NavLink({
-  href,
-  children,
-}: {
-  href: string;
-  children: React.ReactNode;
-}) {
+export function NavLink({ href, children }: { href: string; children: React.ReactNode }) {
   const pathname = usePathname();
   const active = pathname === href || pathname.startsWith(href + "/");
 
@@ -21,9 +15,7 @@ export function NavLink({
       className={cn(
         "relative inline-flex h-9 items-center px-1 text-[15px] font-medium",
         "transition-colors duration-150",
-        active
-          ? "text-foreground"
-          : "text-muted-foreground hover:text-foreground",
+        active ? "text-foreground" : "text-muted-foreground hover:text-foreground",
       )}
     >
       {children}

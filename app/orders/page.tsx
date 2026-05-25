@@ -23,9 +23,7 @@ export default async function OrdersPage() {
     <div className="space-y-8">
       <header className="flex items-end justify-between gap-4 flex-wrap">
         <div className="space-y-1.5">
-          <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-            Activity
-          </p>
+          <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Activity</p>
           <h1 className="font-display text-4xl tracking-tight">Orders</h1>
         </div>
         <Link href="/orders/new" className={`${buttonVariants()} h-10 px-4`}>

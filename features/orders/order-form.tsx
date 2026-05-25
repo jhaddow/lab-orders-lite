@@ -24,10 +24,7 @@ type OrderFields = keyof z.infer<typeof orderSchema>;
 // Derived from the Prisma models so renaming a column updates these in one
 // place. Price fields are flattened from the LabTest's current Price record.
 export type PatientOption = Pick<Patient, "id" | "firstName" | "lastName">;
-export type LabTestOption = Pick<
-  LabTest,
-  "id" | "code" | "name" | "turnaroundDays"
-> &
+export type LabTestOption = Pick<LabTest, "id" | "code" | "name" | "turnaroundDays"> &
   Pick<Price, "priceCents" | "currency">;
 
 function FieldError({ messages }: { messages?: string[] }) {
@@ -46,10 +43,10 @@ export function OrderForm({
   patients: PatientOption[];
   labTests: LabTestOption[];
 }) {
-  const [state, formAction, pending] = useActionState<
-    FormState<OrderFields>,
-    FormData
-  >(createOrderAction, idleState);
+  const [state, formAction, pending] = useActionState<FormState<OrderFields>, FormData>(
+    createOrderAction,
+    idleState,
+  );
   const [patientId, setPatientId] = useState<string>("");
   const [selectedTestIds, setSelectedTestIds] = useState<Set<string>>(new Set());
   const fieldErrors = state.status === "error" ? state.fieldErrors : undefined;
@@ -88,11 +85,7 @@ export function OrderForm({
       <section className="space-y-3">
         <div className="space-y-2">
           <Label htmlFor="patientId">Patient</Label>
-          <Select
-            name="patientId"
-            value={patientId}
-            onValueChange={(v) => setPatientId(v ?? "")}
-          >
+          <Select name="patientId" value={patientId} onValueChange={(v) => setPatientId(v ?? "")}>
             <SelectTrigger
               id="patientId"
               className="h-10 w-full sm:max-w-sm px-3 text-[15px] bg-card"
@@ -150,9 +143,7 @@ export function OrderForm({
                 />
                 <div className="flex-1 flex items-center justify-between gap-4">
                   <div className="min-w-0">
-                    <div className="font-medium text-[15px] text-foreground truncate">
-                      {t.name}
-                    </div>
+                    <div className="font-medium text-[15px] text-foreground truncate">{t.name}</div>
                     <div className="mt-0.5 text-xs text-muted-foreground tabular-nums">
                       <span className="font-mono text-foreground/70">{t.code}</span>
                       <span className="mx-1.5 text-border">·</span>

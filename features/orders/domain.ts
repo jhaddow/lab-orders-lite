@@ -19,10 +19,7 @@ export function calculateEstimatedReadyDate(
   if (items.length === 0) {
     throw new Error("Cannot calculate ready date for an order with no items");
   }
-  const maxTurnaround = items.reduce(
-    (max, item) => Math.max(max, item.turnaroundDaysAtOrder),
-    0,
-  );
+  const maxTurnaround = items.reduce((max, item) => Math.max(max, item.turnaroundDaysAtOrder), 0);
   const result = new Date(createdAt);
   result.setUTCDate(result.getUTCDate() + maxTurnaround);
   return result;

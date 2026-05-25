@@ -19,18 +19,14 @@ function FieldError({ messages }: { messages?: string[] }) {
 }
 
 function Optional() {
-  return (
-    <span className="ml-1.5 text-xs font-normal text-muted-foreground/80">
-      optional
-    </span>
-  );
+  return <span className="ml-1.5 text-xs font-normal text-muted-foreground/80">optional</span>;
 }
 
 export function PatientForm() {
-  const [state, formAction, pending] = useActionState<
-    FormState<PatientFields>,
-    FormData
-  >(createPatientAction, idleState);
+  const [state, formAction, pending] = useActionState<FormState<PatientFields>, FormData>(
+    createPatientAction,
+    idleState,
+  );
   const fieldErrors = state.status === "error" ? state.fieldErrors : undefined;
 
   return (

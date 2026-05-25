@@ -1,8 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import {
-  calculateEstimatedReadyDate,
-  calculateOrderTotalCents,
-} from "./domain";
+import { calculateEstimatedReadyDate, calculateOrderTotalCents } from "./domain";
 
 export type CreateOrderInput = {
   patientId: string;
@@ -42,10 +39,7 @@ export function getOrder(id: string) {
   });
 }
 
-export async function createOrder(
-  input: CreateOrderInput,
-  options: CreateOrderOptions = {},
-) {
+export async function createOrder(input: CreateOrderInput, options: CreateOrderOptions = {}) {
   if (input.labTestIds.length === 0) {
     throw new OrderValidationError("An order must include at least one lab test");
   }
@@ -73,9 +67,7 @@ export async function createOrder(
   const resolved = labTests.map((t) => {
     const latest = t.prices[0];
     if (!latest) {
-      throw new OrderValidationError(
-        `Lab test ${t.code} has no current price`,
-      );
+      throw new OrderValidationError(`Lab test ${t.code} has no current price`);
     }
     return { labTest: t, price: latest };
   });
@@ -87,9 +79,7 @@ export async function createOrder(
     throw new OrderValidationError("Order must include at least one lab test");
   }
   if (rest.some((r) => r.price.currency !== head.price.currency)) {
-    throw new OrderValidationError(
-      "All lab tests in an order must share the same currency",
-    );
+    throw new OrderValidationError("All lab tests in an order must share the same currency");
   }
   const currency = head.price.currency;
 

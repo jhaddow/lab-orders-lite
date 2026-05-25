@@ -9,12 +9,13 @@ export default function NewLabTestPage() {
           href="/lab-tests"
           className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground transition-colors"
         >
-          <span aria-hidden className="mr-1.5">←</span> Back to lab tests
+          <span aria-hidden className="mr-1.5">
+            ←
+          </span>{" "}
+          Back to lab tests
         </Link>
         <div className="space-y-1.5">
-          <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-            New entry
-          </p>
+          <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">New entry</p>
           <h1 className="font-display text-4xl tracking-tight">Add a lab test</h1>
         </div>
       </header>

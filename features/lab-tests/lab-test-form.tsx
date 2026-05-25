@@ -19,10 +19,10 @@ function FieldError({ messages }: { messages?: string[] }) {
 }
 
 export function LabTestForm() {
-  const [state, formAction, pending] = useActionState<
-    FormState<CreateFields>,
-    FormData
-  >(createLabTestAction, idleState);
+  const [state, formAction, pending] = useActionState<FormState<CreateFields>, FormData>(
+    createLabTestAction,
+    idleState,
+  );
   const fieldErrors = state.status === "error" ? state.fieldErrors : undefined;
 
   return (

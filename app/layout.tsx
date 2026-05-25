@@ -21,14 +21,9 @@ export const metadata: Metadata = {
   description: "Manage patients, lab tests, and orders.",
 };
 
-export default function RootLayout({
-  children,
-}: Readonly<{ children: React.ReactNode }>) {
+export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html
-      lang="en"
-      className={`${geistSans.variable} ${fraunces.variable} h-full antialiased`}
-    >
+    <html lang="en" className={`${geistSans.variable} ${fraunces.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col bg-background text-foreground font-sans">
         <header className="sticky top-0 z-20 border-b border-border/70 bg-background/85 backdrop-blur supports-[backdrop-filter]:bg-background/65">
           <div className="mx-auto max-w-5xl px-6 h-16 flex items-center justify-between gap-8">
@@ -41,8 +36,7 @@ export default function RootLayout({
                 className="size-1.5 rounded-full bg-primary group-hover:scale-150 transition-transform duration-200"
               />
               <span className="font-display text-[1.0625rem] tracking-tight text-foreground">
-                Lab Orders{" "}
-                <span className="italic text-muted-foreground/80">Lite</span>
+                Lab Orders <span className="italic text-muted-foreground/80">Lite</span>
               </span>
             </Link>
             <nav className="flex items-center gap-1">

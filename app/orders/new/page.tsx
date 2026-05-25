@@ -31,21 +31,20 @@ export default async function NewOrderPage() {
           href="/orders"
           className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground transition-colors"
         >
-          <span aria-hidden className="mr-1.5">←</span> Back to orders
+          <span aria-hidden className="mr-1.5">
+            ←
+          </span>{" "}
+          Back to orders
         </Link>
         <div className="space-y-1.5">
-          <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-            New order
-          </p>
+          <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">New order</p>
           <h1 className="font-display text-4xl tracking-tight">Create an order</h1>
         </div>
       </header>
 
       {patients.length === 0 ? (
         <div className="rounded-xl border border-dashed border-border bg-card/50 p-12 text-center space-y-3 max-w-xl">
-          <p className="font-display text-xl text-foreground">
-            No patients on file
-          </p>
+          <p className="font-display text-xl text-foreground">No patients on file</p>
           <p className="text-sm text-muted-foreground">
             You need at least one patient before creating an order.
           </p>

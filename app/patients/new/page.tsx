@@ -9,7 +9,10 @@ export default function NewPatientPage() {
           href="/patients"
           className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground transition-colors"
         >
-          <span aria-hidden className="mr-1.5">←</span> Back to patients
+          <span aria-hidden className="mr-1.5">
+            ←
+          </span>{" "}
+          Back to patients
         </Link>
         <div className="space-y-1.5">
           <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">

@@ -1,9 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  createPatient,
-  getPatient,
-  getPatients,
-} from "@/features/patients/repo";
+import { createPatient, getPatient, getPatients } from "@/features/patients/repo";
 
 describe("patient repository", () => {
   it("creates and reads back a patient", async () => {

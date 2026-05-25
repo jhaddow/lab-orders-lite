@@ -63,18 +63,14 @@ export async function createLabTest(input: CreateLabTestInput) {
     where: { name: { equals: trimmedName, mode: "insensitive" } },
   });
   if (existingByName) {
-    throw new LabTestValidationError(
-      `A lab test named "${existingByName.name}" already exists`,
-    );
+    throw new LabTestValidationError(`A lab test named "${existingByName.name}" already exists`);
   }
 
   const existingByCode = await prisma.labTest.findUnique({
     where: { code: trimmedCode },
   });
   if (existingByCode) {
-    throw new LabTestValidationError(
-      `A lab test with code "${trimmedCode}" already exists`,
-    );
+    throw new LabTestValidationError(`A lab test with code "${trimmedCode}" already exists`);
   }
 
   return prisma.labTest.create({
@@ -117,9 +113,7 @@ export async function setLabTestPrice(
     orderBy: { createdAt: "desc" },
   });
   if (latest && latest.priceCents === priceCents && latest.currency === currency) {
-    throw new LabTestValidationError(
-      "New price is the same as the current price",
-    );
+    throw new LabTestValidationError("New price is the same as the current price");
   }
 
   return prisma.price.create({

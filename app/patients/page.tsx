@@ -21,15 +21,10 @@ export default async function PatientsPage() {
     <div className="space-y-8">
       <header className="flex items-end justify-between gap-4 flex-wrap">
         <div className="space-y-1.5">
-          <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-            Records
-          </p>
+          <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Records</p>
           <h1 className="font-display text-4xl tracking-tight">Patients</h1>
         </div>
-        <Link
-          href="/patients/new"
-          className={`${buttonVariants()} h-10 px-4`}
-        >
+        <Link href="/patients/new" className={`${buttonVariants()} h-10 px-4`}>
           New patient
         </Link>
       </header>
@@ -37,9 +32,7 @@ export default async function PatientsPage() {
       {patients.length === 0 ? (
         <div className="rounded-xl border border-dashed border-border bg-card/50 p-12 text-center space-y-3">
           <p className="font-display text-xl text-foreground">No patients yet</p>
-          <p className="text-sm text-muted-foreground">
-            Get started by adding your first patient.
-          </p>
+          <p className="text-sm text-muted-foreground">Get started by adding your first patient.</p>
           <div className="pt-1">
             <Link
               href="/patients/new"

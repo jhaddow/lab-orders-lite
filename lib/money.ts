@@ -14,10 +14,7 @@ export function asCurrency(value: string): CurrencyCode {
   throw new Error(`Unsupported currency: ${value}`);
 }
 
-export function formatMoney(
-  cents: number,
-  currency: CurrencyCode = "USD",
-): string {
+export function formatMoney(cents: number, currency: CurrencyCode = "USD"): string {
   if (!Number.isInteger(cents)) {
     throw new Error(`formatMoney expects integer cents, got ${cents}`);
   }

@@ -1,8 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  calculateEstimatedReadyDate,
-  calculateOrderTotalCents,
-} from "./domain";
+import { calculateEstimatedReadyDate, calculateOrderTotalCents } from "./domain";
 
 describe("calculateOrderTotalCents", () => {
   it("sums a single item", () => {
@@ -44,9 +41,7 @@ describe("calculateEstimatedReadyDate", () => {
   });
 
   it("handles a single item", () => {
-    const ready = calculateEstimatedReadyDate(base, [
-      { turnaroundDaysAtOrder: 5 },
-    ]);
+    const ready = calculateEstimatedReadyDate(base, [{ turnaroundDaysAtOrder: 5 }]);
     expect(ready.toISOString()).toBe("2026-05-29T12:00:00.000Z");
   });
 

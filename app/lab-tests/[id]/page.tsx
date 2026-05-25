@@ -19,11 +19,7 @@ function formatDateTime(d: Date) {
   }).format(d);
 }
 
-export default async function LabTestDetailPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
+export default async function LabTestDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const labTest = await getLabTest(id);
   if (!labTest) notFound();
@@ -36,12 +32,13 @@ export default async function LabTestDetailPage({
           href="/lab-tests"
           className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground transition-colors"
         >
-          <span aria-hidden className="mr-1.5">←</span> Back to lab tests
+          <span aria-hidden className="mr-1.5">
+            ←
+          </span>{" "}
+          Back to lab tests
         </Link>
         <div className="space-y-1.5">
-          <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-            Lab test
-          </p>
+          <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Lab test</p>
           <h1 className="font-display text-4xl tracking-tight">{labTest.name}</h1>
           <p className="text-xs text-muted-foreground font-mono tabular-nums pt-1">
             {labTest.code} · {labTest.turnaroundDays}d turnaround
@@ -66,9 +63,7 @@ export default async function LabTestDetailPage({
               )}
             </div>
             <div className="mt-1 text-xs text-muted-foreground tabular-nums">
-              {current
-                ? `Set ${formatDateTime(current.createdAt)}`
-                : "No price set"}
+              {current ? `Set ${formatDateTime(current.createdAt)}` : "No price set"}
             </div>
           </div>
           <div className="px-5 py-5">
@@ -81,8 +76,7 @@ export default async function LabTestDetailPage({
         <div className="flex items-baseline justify-between">
           <h2 className="font-display text-lg tracking-tight">Price history</h2>
           <span className="text-xs text-muted-foreground tabular-nums">
-            {labTest.prices.length}{" "}
-            {labTest.prices.length === 1 ? "record" : "records"}
+            {labTest.prices.length} {labTest.prices.length === 1 ? "record" : "records"}
           </span>
         </div>
         {labTest.prices.length === 0 ? (
@@ -118,9 +112,7 @@ export default async function LabTestDetailPage({
                           Current
                         </span>
                       ) : (
-                        <span className="text-xs text-muted-foreground">
-                          Superseded
-                        </span>
+                        <span className="text-xs text-muted-foreground">Superseded</span>
                       )}
                     </TableCell>
                     <TableCell className="pr-5 py-4 text-right font-medium tabular-nums text-foreground">

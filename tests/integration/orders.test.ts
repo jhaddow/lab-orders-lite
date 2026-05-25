@@ -1,16 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { prisma } from "@/lib/prisma";
 import { createPatient } from "@/features/patients/repo";
-import {
-  getLabTests,
-  setLabTestPrice,
-} from "@/features/lab-tests/repo";
-import {
-  createOrder,
-  getOrder,
-  getOrders,
-  OrderValidationError,
-} from "@/features/orders/repo";
+import { getLabTests, setLabTestPrice } from "@/features/lab-tests/repo";
+import { createOrder, getOrder, getOrders, OrderValidationError } from "@/features/orders/repo";
 
 async function setupPatient() {
   return createPatient({
@@ -29,8 +21,8 @@ describe("order repository", () => {
   describe("createOrder", () => {
     it("creates an order with total, currency, and PENDING status", async () => {
       const patient = await setupPatient();
-      const cbcId = await getLabTestIdByCode("CBC");      // 4500c
-      const lipidId = await getLabTestIdByCode("LIPID");  // 6800c
+      const cbcId = await getLabTestIdByCode("CBC"); // 4500c
+      const lipidId = await getLabTestIdByCode("LIPID"); // 6800c
 
       const order = await createOrder({
         patientId: patient.id,
@@ -45,8 +37,8 @@ describe("order repository", () => {
 
     it("links each line item to the current Price and snapshots turnaround", async () => {
       const patient = await setupPatient();
-      const cbcId = await getLabTestIdByCode("CBC");      // 4500c / 1d
-      const lipidId = await getLabTestIdByCode("LIPID");  // 6800c / 2d
+      const cbcId = await getLabTestIdByCode("CBC"); // 4500c / 1d
+      const lipidId = await getLabTestIdByCode("LIPID"); // 6800c / 2d
 
       const order = await createOrder({
         patientId: patient.id,
@@ -69,9 +61,9 @@ describe("order repository", () => {
 
     it("computes estimatedReadyDate from the slowest test's turnaround", async () => {
       const patient = await setupPatient();
-      const cbcId = await getLabTestIdByCode("CBC");      // 1d
-      const lipidId = await getLabTestIdByCode("LIPID");  // 2d
-      const tshId = await getLabTestIdByCode("TSH");      // 3d (the slowest)
+      const cbcId = await getLabTestIdByCode("CBC"); // 1d
+      const lipidId = await getLabTestIdByCode("LIPID"); // 2d
+      const tshId = await getLabTestIdByCode("TSH"); // 3d (the slowest)
 
       const order = await createOrder(
         {
@@ -82,9 +74,7 @@ describe("order repository", () => {
       );
 
       // 2026-05-25 + 3 days = 2026-05-28 (DATE column drops time)
-      expect(order.estimatedReadyDate.toISOString().slice(0, 10)).toBe(
-        "2026-05-28",
-      );
+      expect(order.estimatedReadyDate.toISOString().slice(0, 10)).toBe("2026-05-28");
     });
 
     it("references the price that was current at order time, even after later price changes", async () => {
@@ -115,9 +105,9 @@ describe("order repository", () => {
 
     it("rejects an order with no lab tests", async () => {
       const patient = await setupPatient();
-      await expect(
-        createOrder({ patientId: patient.id, labTestIds: [] }),
-      ).rejects.toBeInstanceOf(OrderValidationError);
+      await expect(createOrder({ patientId: patient.id, labTestIds: [] })).rejects.toBeInstanceOf(
+        OrderValidationError,
+      );
     });
 
     it("rejects an unknown patient", async () => {
@@ -139,7 +129,7 @@ describe("order repository", () => {
 
     it("rejects an order whose lab tests have mixed currencies", async () => {
       const patient = await setupPatient();
-      const cbcId = await getLabTestIdByCode("CBC");  // USD
+      const cbcId = await getLabTestIdByCode("CBC"); // USD
 
       // Create a separate lab test priced in EUR.
       const eurTest = await prisma.labTest.create({

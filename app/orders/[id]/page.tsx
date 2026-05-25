@@ -16,18 +16,12 @@ function formatDate(d: Date) {
   return new Intl.DateTimeFormat("en-US", { dateStyle: "medium" }).format(d);
 }
 
-export default async function OrderDetailPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
+export default async function OrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const order = await getOrder(id);
   if (!order) notFound();
   const currency = asCurrency(order.currency);
-  const maxTurnaroundDays = Math.max(
-    ...order.items.map((i) => i.turnaroundDaysAtOrder),
-  );
+  const maxTurnaroundDays = Math.max(...order.items.map((i) => i.turnaroundDaysAtOrder));
 
   return (
     <div className="space-y-10">
@@ -36,7 +30,10 @@ export default async function OrderDetailPage({
           href="/orders"
           className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground transition-colors"
         >
-          <span aria-hidden className="mr-1.5">←</span> Back to orders
+          <span aria-hidden className="mr-1.5">
+            ←
+          </span>{" "}
+          Back to orders
         </Link>
         <div className="flex items-end justify-between gap-4 flex-wrap">
           <div className="space-y-1.5">
@@ -47,9 +44,7 @@ export default async function OrderDetailPage({
               {order.patient.lastName},{" "}
               <span className="text-foreground/80">{order.patient.firstName}</span>
             </h1>
-            <p className="text-xs text-muted-foreground font-mono tabular-nums pt-1">
-              {order.id}
-            </p>
+            <p className="text-xs text-muted-foreground font-mono tabular-nums pt-1">{order.id}</p>
           </div>
           <Badge
             variant="outline"
@@ -89,8 +84,7 @@ export default async function OrderDetailPage({
         <div className="flex items-baseline justify-between">
           <h2 className="font-display text-lg tracking-tight">Tests</h2>
           <span className="text-xs text-muted-foreground tabular-nums">
-            {order.items.length}{" "}
-            {order.items.length === 1 ? "item" : "items"}
+            {order.items.length} {order.items.length === 1 ? "item" : "items"}
           </span>
         </div>
         <div className="rounded-xl border border-border bg-card overflow-hidden">
@@ -124,17 +118,17 @@ export default async function OrderDetailPage({
                     {item.turnaroundDaysAtOrder}d
                   </TableCell>
                   <TableCell className="pr-5 py-4 text-right font-medium tabular-nums text-foreground">
-                    {formatMoney(
-                      item.price.priceCents,
-                      asCurrency(item.price.currency),
-                    )}
+                    {formatMoney(item.price.priceCents, asCurrency(item.price.currency))}
                   </TableCell>
                 </TableRow>
               ))}
             </TableBody>
             <tfoot className="border-t border-border bg-muted/30">
               <tr>
-                <td colSpan={3} className="pl-5 py-3.5 text-right text-xs uppercase tracking-[0.12em] text-muted-foreground">
+                <td
+                  colSpan={3}
+                  className="pl-5 py-3.5 text-right text-xs uppercase tracking-[0.12em] text-muted-foreground"
+                >
                   Total
                 </td>
                 <td className="pr-5 py-3.5 text-right font-display text-lg tabular-nums text-foreground">
@@ -162,15 +156,11 @@ function Stat({
 }) {
   return (
     <div className={`px-5 py-5 ${highlight ? "bg-accent/30" : ""}`}>
-      <div className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
-        {label}
-      </div>
+      <div className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">{label}</div>
       <div className="mt-1.5 font-display text-2xl tracking-tight tabular-nums text-foreground">
         {value}
       </div>
-      <div className="mt-1 text-xs text-muted-foreground tabular-nums">
-        {note}
-      </div>
+      <div className="mt-1 text-xs text-muted-foreground tabular-nums">{note}</div>
     </div>
   );
 }

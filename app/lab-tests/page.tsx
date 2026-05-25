@@ -18,15 +18,10 @@ export default async function LabTestsPage() {
     <div className="space-y-8">
       <header className="flex items-end justify-between gap-4 flex-wrap">
         <div className="space-y-1.5">
-          <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-            Catalog
-          </p>
+          <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Catalog</p>
           <h1 className="font-display text-4xl tracking-tight">Lab tests</h1>
         </div>
-        <Link
-          href="/lab-tests/new"
-          className={`${buttonVariants()} h-10 px-4`}
-        >
+        <Link href="/lab-tests/new" className={`${buttonVariants()} h-10 px-4`}>
           New lab test
         </Link>
       </header>
@@ -74,9 +69,7 @@ export default async function LabTestsPage() {
                     <TableCell className="pl-5 py-4 font-mono text-xs text-foreground/70 tabular-nums">
                       {t.code}
                     </TableCell>
-                    <TableCell className="py-4 font-medium text-foreground">
-                      {t.name}
-                    </TableCell>
+                    <TableCell className="py-4 font-medium text-foreground">{t.name}</TableCell>
                     <TableCell className="py-4 text-muted-foreground tabular-nums">
                       {t.turnaroundDays}d
                     </TableCell>
