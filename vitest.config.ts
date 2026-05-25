@@ -13,7 +13,7 @@ export default defineConfig({
         resolve: { alias },
         test: {
           name: "unit",
-          include: ["lib/**/*.test.ts"],
+          include: ["features/**/*.test.ts", "lib/**/*.test.ts"],
           exclude: ["lib/generated/**", "tests/**"],
           environment: "node",
           sequence: { groupOrder: 0 },

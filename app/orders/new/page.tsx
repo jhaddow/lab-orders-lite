@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { buttonVariants } from "@/components/ui/button";
-import { OrderForm } from "@/components/order-form";
-import { getPatients } from "@/lib/db/patients";
-import { getLabTests } from "@/lib/db/lab-tests";
+import { OrderForm } from "@/features/orders/order-form";
+import { getPatients } from "@/features/patients/repo";
+import { getLabTests } from "@/features/lab-tests/repo";
 
 export default async function NewOrderPage() {
   const [patients, labTests] = await Promise.all([getPatients(), getLabTests()]);

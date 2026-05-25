@@ -1,12 +1,12 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { prisma } from "@/lib/db/client";
-import { createPatient } from "@/lib/db/patients";
+import { prisma } from "@/lib/prisma";
+import { createPatient } from "@/features/patients/repo";
 import {
   createOrder,
   getOrder,
   getOrders,
   OrderValidationError,
-} from "@/lib/db/orders";
+} from "@/features/orders/repo";
 
 async function setupPatient() {
   return createPatient({

@@ -8,7 +8,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { getPatients } from "@/lib/db/patients";
+import { getPatients } from "@/features/patients/repo";
 
 function formatDate(d: Date) {
   return new Intl.DateTimeFormat("en-US", { dateStyle: "medium" }).format(d);

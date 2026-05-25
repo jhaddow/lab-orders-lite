@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { PatientForm } from "@/components/patient-form";
+import { PatientForm } from "@/features/patients/patient-form";
 
 export default function NewPatientPage() {
   return (

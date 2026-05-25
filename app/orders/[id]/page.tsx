@@ -9,7 +9,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { getOrder } from "@/lib/db/orders";
+import { getOrder } from "@/features/orders/repo";
 import { formatMoney } from "@/lib/money";
 
 function formatDate(d: Date) {

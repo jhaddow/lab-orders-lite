@@ -4,8 +4,8 @@ import { useActionState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { createPatientAction } from "@/lib/actions/patients";
-import { idleState } from "@/lib/actions/types";
+import { createPatientAction } from "./actions";
+import { idleState } from "@/lib/form-state";
 
 const inputCls =
   "h-10 px-3 text-[15px] bg-card";

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   calculateEstimatedReadyDate,
   calculateOrderTotalCents,
-} from "./orders";
+} from "./domain";
 
 describe("calculateOrderTotalCents", () => {
   it("sums a single item", () => {

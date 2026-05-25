@@ -1,4 +1,4 @@
-import { prisma } from "./client";
+import { prisma } from "@/lib/prisma";
 
 export type CreatePatientInput = {
   firstName: string;

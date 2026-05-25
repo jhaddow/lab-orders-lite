@@ -51,29 +51,34 @@ The integration suite uses a separate database (`lab_orders_lite_test`) configur
 The codebase is organised in **clear horizontal layers** so each layer has a single concern and is independently testable.
 
 ```
-app/                       # Next.js App Router pages (server components)
-  patients/                #   list, /new
-  orders/                  #   list, /new, /[id]
-components/                # React components (server + client)
+app/                       # Next.js App Router — routing only
+  patients/                #   /patients, /patients/new
+  orders/                  #   /orders, /orders/new, /orders/[id]
+features/                  # One folder per feature; everything for X lives in X/
+  patients/
+    repo.ts                #   Prisma queries
+    actions.ts             #   server actions
+    schema.ts              #   zod validation
+    patient-form.tsx       #   client form
+  orders/
+    repo.ts, actions.ts, schema.ts
+    domain.ts              #   pure business logic (no I/O)
+    domain.test.ts         #   colocated unit tests
+    order-form.tsx         #   client form w/ live total + ready-date preview
+  lab-tests/
+    repo.ts                #   read-only catalog access
+lib/                       # Cross-cutting only
+  prisma.ts                #   Prisma singleton (PrismaPg adapter)
+  money.ts                 #   formatMoney(cents, currency) + tests
+  form-state.ts            #   shared FormState type for server actions
+  utils.ts                 #   cn() class-merge for Shadcn
+components/
   ui/                      #   Shadcn primitives (button, input, table, …)
-  patient-form.tsx         #   client form using useActionState
-  order-form.tsx           #   client form with live total + ready-date preview
-lib/
-  db/                      # Prisma repositories — the ONLY place importing the client
-    client.ts              #   Prisma singleton (PrismaPg driver adapter)
-    patients.ts, orders.ts, lab-tests.ts
-  domain/                  # Pure business logic, no I/O
-    orders.ts              #   calculateOrderTotalCents, calculateEstimatedReadyDate
-  actions/                 # Server actions — thin: validate → call db layer → revalidate
-    patients.ts, orders.ts, types.ts
-  validation/              # Zod schemas (one per resource)
-    patient.ts, order.ts
-  money.ts                 # formatMoney(cents, currency) helper
-  utils.ts                 # cn() class-merge helper for Shadcn
+  nav-link.tsx             #   genuinely cross-page nav helper
 prisma/
-  schema.prisma            # Patient, LabTest, Order, OrderItem
-  seed.ts                  # Seeds ~6 common lab tests
-  migrations/              # Tracked migration history
+  schema.prisma            #   Patient, LabTest, Order, OrderItem
+  seed.ts                  #   Seeds ~6 common lab tests
+  migrations/              #   Tracked migration history
 tests/integration/         # Vitest integration tests against a real test DB
 docker-compose.yml         # Postgres 16
 vitest.config.ts           # Two projects: `unit` and `integration`
@@ -83,9 +88,10 @@ vitest.config.ts           # Two projects: `unit` and `integration`
 
 - **Money as Stripe-style integer minor units.** Prices stored as `Int priceCents` plus an explicit `currency` column (default `"USD"`). Avoids floating-point and `Decimal` round-trip bugs; the schema is multi-currency ready without a migration.
 - **Snapshotted prices on `OrderItem`.** `priceCentsAtOrder` and `turnaroundDaysAtOrder` are copied onto each order line at creation time, so an order's totals never change if the underlying catalog is later edited. `totalCents` and `estimatedReadyDate` are also persisted on `Order` for simple sorting/filtering and to keep the order as a stable contract.
-- **Layered structure.** `lib/db/` is the only place Prisma is imported; pages and actions go through it. Pure business rules live in `lib/domain/` and are trivially unit-testable. Server actions in `lib/actions/` are thin: parse → call db layer → `revalidatePath` + `redirect`.
+- **Feature-first folder layout.** Everything for a feature — repo, server actions, zod schema, domain logic, and the client form — lives in `features/<name>/`. Opening `features/patients/` shows the whole concept at a glance, rather than tracing one feature across four architectural layers. `lib/` is reserved for truly cross-cutting helpers (Prisma singleton, money formatting, the `FormState` type, the `cn()` utility). `app/` stays purely about routing.
+- **Repos are the only place Prisma is imported.** Pages and server actions go through `features/*/repo.ts`. Pure business rules (e.g. `calculateOrderTotalCents`, `calculateEstimatedReadyDate`) live in `features/orders/domain.ts` next to their unit tests.
 - **Server-rendered with server actions** (`useActionState`). No client-side fetch layer, no react-hook-form. Validation runs server-side via zod; field errors surface back into the form.
-- **Prisma 7 with the `@prisma/adapter-pg` driver adapter** (the new Prisma 7 default). Requires explicit `adapter` construction, hence the wrapper in `lib/db/client.ts`.
+- **Prisma 7 with the `@prisma/adapter-pg` driver adapter** (the new Prisma 7 default). Requires explicit `adapter` construction, hence the wrapper in `lib/prisma.ts`.
 
 ### Testing strategy
 

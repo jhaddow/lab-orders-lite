@@ -2,9 +2,9 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { createPatient } from "@/lib/db/patients";
-import { patientSchema } from "@/lib/validation/patient";
-import type { FormState } from "./types";
+import { createPatient } from "./repo";
+import { patientSchema } from "./schema";
+import type { FormState } from "@/lib/form-state";
 
 export async function createPatientAction(
   _prev: FormState,

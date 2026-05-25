@@ -1,8 +1,8 @@
-import { prisma } from "./client";
+import { prisma } from "@/lib/prisma";
 import {
   calculateEstimatedReadyDate,
   calculateOrderTotalCents,
-} from "@/lib/domain/orders";
+} from "./domain";
 
 export type CreateOrderInput = {
   patientId: string;

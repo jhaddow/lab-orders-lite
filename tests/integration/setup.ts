@@ -1,5 +1,5 @@
 import { beforeEach, afterAll } from "vitest";
-import { prisma } from "@/lib/db/client";
+import { prisma } from "@/lib/prisma";
 
 const LAB_TESTS = [
   { code: "CBC",    name: "Complete Blood Count",        priceCents: 4500, turnaroundDays: 1 },
