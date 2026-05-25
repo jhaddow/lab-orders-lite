@@ -21,11 +21,11 @@ pnpm install
 cp .env.example .env
 pnpm db:up           # start Postgres in Docker
 pnpm db:deploy       # apply migrations
-pnpm db:seed         # seed the lab-test catalog
+pnpm db:seed         # seed users + lab-test catalog
 pnpm dev             # http://localhost:3000
 ```
 
-Then create a patient, then create an order for them.
+Then visit `/sign-in-as` and pick a user (no passwords — dev-mode auth, see below). Three users are seeded: **Alex Morgan** (ADMIN), **Jane Patel** (CLINICIAN), **Sam Rivera** (CLINICIAN). Then create a patient and an order.
 
 ### Tests
 
@@ -39,16 +39,21 @@ The integration suite uses a separate database (`lab_orders_lite_test`) configur
 
 ### Common scripts
 
-| Command                       | What it does                              |
-| ----------------------------- | ----------------------------------------- |
-| `pnpm dev`                    | Next.js dev server (Turbopack)            |
-| `pnpm build` / `pnpm start`   | Production build / serve                  |
-| `pnpm db:up` / `pnpm db:down` | Start / stop the local Postgres container |
-| `pnpm db:migrate`             | Create a new migration in development     |
-| `pnpm db:deploy`              | Apply existing migrations (no prompts)    |
-| `pnpm db:seed`                | Seed the lab-test catalog                 |
-| `pnpm db:reset`               | Drop, migrate, reseed (dev DB)            |
-| `pnpm db:generate`            | Regenerate the Prisma client              |
+| Command                        | What it does                              |
+| ------------------------------ | ----------------------------------------- |
+| `pnpm dev`                     | Next.js dev server (Turbopack)            |
+| `pnpm build` / `pnpm start`    | Production build / serve                  |
+| `pnpm typecheck`               | `tsc --noEmit`                            |
+| `pnpm lint`                    | ESLint                                    |
+| `pnpm format` / `format:check` | Prettier write / check                    |
+| `pnpm db:up` / `pnpm db:down`  | Start / stop the local Postgres container |
+| `pnpm db:migrate`              | Create a new migration in development     |
+| `pnpm db:deploy`               | Apply existing migrations (no prompts)    |
+| `pnpm db:seed`                 | Seed users + lab-test catalog             |
+| `pnpm db:reset`                | Drop, migrate, reseed (dev DB)            |
+| `pnpm db:generate`             | Regenerate the Prisma client              |
+
+Husky runs `lint-staged` (prettier + eslint --fix) on pre-commit, and `typecheck + test:unit` on pre-push. CI (GitHub Actions) runs format check + lint + typecheck + the full test suite against a Postgres service container.
 
 ---
 
@@ -58,6 +63,7 @@ The codebase is organized in **clear horizontal layers** so each layer has a sin
 
 ```
 app/                       # Next.js App Router — routing only
+  sign-in-as/              # dev-mode user picker
 features/                  # One folder per feature; everything for X lives in X/
   patients/                #   the simplest case
     repo.ts                #     Prisma queries
@@ -66,13 +72,15 @@ features/                  # One folder per feature; everything for X lives in X
     patient-form.tsx       #     client form
   orders/                  #   adds pure domain logic + colocated unit tests
     repo.ts, actions.ts, schema.ts
-    domain.ts              #     calculateOrderTotalCents, calculateEstimatedReadyDate
+    domain.ts              #     calculations + canTransition state machine
     domain.test.ts         #     unit tests next to the code they cover
     order-form.tsx
   lab-tests/               #   same pattern; more forms (create + append-price)
-lib/                       # Cross-cutting only (Prisma singleton, money, FormState, cn)
+  audit/                   #   appendAuditLog + listAuditEntriesForEntity
+  users/                   #   getUserById, listUsers (used by /sign-in-as)
+lib/                       # Cross-cutting only (Prisma singleton, money, auth, FormState, cn)
 components/ui/             # Shadcn primitives
-prisma/                    # schema.prisma, seed.ts, migrations/
+prisma/                    # schema.prisma, seed.ts, seed-users.ts, migrations/
 tests/integration/         # Vitest integration tests against a real test DB
 ```
 
@@ -82,6 +90,9 @@ Every feature follows the same shape: `repo.ts` is the only place Prisma is impo
 
 - **Money as Stripe-style integer minor units.** `Int priceCents` + explicit `currency` column. Avoids floating-point bugs and is multi-currency-ready without a migration.
 - **Price versioning via an append-only `Price` table.** Changing a price inserts a new `Price` row — never updates in place. Each `OrderItem` carries a `priceId` FK to the exact `Price` that was current at order time, so historical totals never drift.
+- **Order workflow as a pure state machine.** `canTransition(from, to)` is a pure function over an `ALLOWED_TRANSITIONS` map; unit tests cover the full 16-case truth table. Terminal states (COMPLETED, CANCELLED) reject all further transitions. The repo runs `load → assert → update → audit` inside one transaction so a failed audit rolls back the status change.
+- **Append-only audit log written atomically with the mutation.** Every state-changing action passes a `tx` to `appendAuditLog(tx, …)`, so an audit row only exists when the underlying change committed. Per-action metadata (`from`/`to` status, cancellation reason, previous price) lives in a JSON column rather than schema sprawl.
+- **Dev-mode auth, production-shaped helper.** `getCurrentUser()` reads a signed cookie; `/sign-in-as` is a no-password user picker. Real auth (NextAuth/Lucia) would slot in behind the same helper with no call-site changes. Role gating happens at the repo boundary (`requireRole(actor, "ADMIN")`), not in the UI — the UI hides admin-only affordances as UX polish.
 - **Feature-first folders.** Everything for a feature lives in `features/<name>/`. `lib/` is reserved for genuinely cross-cutting helpers; `app/` is routing only.
 - **Repos are the only place Prisma is imported.** Pages and server actions go through `features/*/repo.ts`.
 - **Server actions + server-side zod.** No client-side fetch layer, no react-hook-form. Field errors surface back into the form via `useActionState`.
@@ -94,21 +105,21 @@ Every feature follows the same shape: `repo.ts` is the only place Prisma is impo
 
 ## Trade-offs (what I cut and why)
 
-- **Prod migration for price versioning isn't implemented.** The migration just drops the old `priceCents`/`currency` columns. A real cutover would backfill a `Price` row per `LabTest` and link existing `OrderItem`s before dropping anything.
-- **Order workflow is a single `PENDING` status.** The enum is in place; the `IN_PROGRESS → COMPLETED → CANCELLED` transitions and audit log are the obvious next step.
+- **Auth is dev-mode only.** No passwords, no session expiry, no CSRF defenses beyond Next's defaults. The `getCurrentUser()` / `requireRole()` helpers and the `User`+`Role` schema are shaped so NextAuth/Lucia could slot in without changing call sites.
+- **Audit log is append-only by convention, not WORM.** A determined operator with DB access could mutate or delete rows. Production would back it with append-only storage (or ship to a separate logging service) for tamper resistance.
+- **Role policy is coarse.** Two roles (`CLINICIAN`, `ADMIN`); ADMIN gates lab-test creation and price changes (catalog mutations). Order workflow transitions are open to any signed-in user. Real RBAC would scope by patient/department/ordering provider.
+- **Prod migration for price versioning + `createdByUserId` isn't implemented.** Both migrations drop or add required columns outright — fine for a take-home where reviewers reset the DB. A real cutover would backfill (a `Price` row per existing `LabTest`; a system `User` for legacy orders) before dropping or constraining anything.
 - **No edit or delete on patients/orders.** Create-only. Deleting a lab test would also need a deprecation pattern since orders reference prices via FK.
 - **Turnaround isn't versioned.** Mutable on `LabTest`, snapshotted on `OrderItem`. The same `Price`-style treatment would apply if SLAs ever changed.
-- **No auth, no pagination/search, no optimistic UI.** Deliberately deferred to keep the focus on the data model and order flow; the seed data is small enough that none of these hurt the demo.
+- **No pagination/search, no optimistic UI.** Deliberately deferred — the seed data is small enough that none of these hurt the demo.
 - **USD only.** Schema and formatter are multi-currency ready, but seeds are USD and the order form rejects mixed-currency selections.
 
 ## With more time I'd add
 
-- Auth + per-user audit trail. Non-negotiable for anything touching PHI; would shape the audit log for order status changes too.
-- Order status workflow (`IN_PROGRESS → COMPLETED → CANCELLED`) with an audit log of status changes.
-- Dev tooling: ESLint + Prettier configured, a pre-commit hook (lint-staged + Husky) to run typecheck/lint/format on changed files, and CI on push (typecheck + tests against a Postgres service container).
-- A more deliberate cut of project-level agent skills in `.claude/skills/`. The current set was inherited from my personal config; a team-shared set should be curated to match the project's stack and conventions (and reviewed alongside the code).
+- Swap the cookie stub for real auth (NextAuth or Lucia) behind the existing `getCurrentUser()` helper. Tamper-resistant audit storage (append-only WORM or a separate logging service). Finer-grained RBAC scoped by patient/department.
 - Patient edit + soft-delete (`deletedAt`) with a "show archived" toggle.
-- Filter/search on the orders list (by patient, status, date range).
+- Filter/search on the orders list (by patient, status, date range) — the `status` column is already indexed for this.
+- A more deliberate cut of project-level agent skills in `.claude/skills/`. The current set was inherited from my personal config; a team-shared set should be curated to match the project's stack and conventions.
 - Better empty/loading/error states; right now we lean on Next's defaults.
 - A few Playwright happy-path E2E tests against the running app.
 
@@ -121,5 +132,7 @@ Built with **Claude Code** (Claude Opus 4.7) for scaffolding and boilerplate. Ev
 - Integer-cents money model instead of `Decimal`.
 - Feature-first folders after an initial layered (`db`/`domain`/`actions`/`validation`) version proved hard to navigate.
 - Append-only `Price` table for price versioning, instead of mutating `LabTest.priceCents` and relying on snapshot copies.
+- Append-only `AuditLog` written in the same transaction as the mutation it records — an audit row only exists when the change committed.
+- Order workflow modeled as a pure `canTransition(from, to)` state machine with a 16-case truth-table test, rather than scattering `if (status === ...)` checks across the repo.
 
 The commit history is the process narrative — each commit records the specific principle the step was grounded in.
