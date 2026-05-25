@@ -136,6 +136,8 @@ What this design _doesn't_ protect against: someone running a one-off script tha
 ## With more time I'd add
 
 - Swap the cookie stub for real auth (NextAuth or Lucia) behind the existing `getCurrentUser()` helper. Tamper-resistant audit storage (append-only WORM or a separate logging service). Finer-grained RBAC scoped by patient/department.
+- Observability: a structured server-side logger (pino or similar), error reporting to Sentry or equivalent, and one or two product metrics (orders created per hour, time from PENDING to COMPLETED) so on-call has signal beyond Next's defaults.
+- Accessibility audit: keyboard navigation and screen-reader pass, including the aria attributes that base-ui's `Select` doesn't ship by default. Healthcare apps are often regulated for a11y, and even a small clinic team includes users who rely on it.
 - Patient edit + soft-delete (`deletedAt`) with a "show archived" toggle.
 - Filter/search on the orders list (by patient, status, date range). The `status` column is already indexed for this.
 - A more deliberate cut of project-level agent skills in `.claude/skills/`. The current set was inherited from my personal config; a team-shared set should be curated to match the project's stack and conventions.
