@@ -1,7 +1,13 @@
 import type { User } from "@/lib/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { appendAuditLog } from "@/features/audit/repo";
-import { calculateEstimatedReadyDate, calculateOrderTotalCents } from "./domain";
+import { requireRole } from "@/lib/auth";
+import {
+  assertTransition,
+  calculateEstimatedReadyDate,
+  calculateOrderTotalCents,
+  type OrderStatus,
+} from "./domain";
 
 export type CreateOrderInput = {
   patientId: string;
@@ -127,5 +133,72 @@ export async function createOrder(
       metadata: { patientId: patient.id, totalCents, currency, itemCount: items.length },
     });
     return order;
+  });
+}
+
+// ---- Status transitions ----------------------------------------------
+//
+// Each transition: load the current order, assert the transition is allowed,
+// update the row, and audit — all in one transaction so a failed audit
+// rolls back the status change.
+
+async function transitionOrder(
+  orderId: string,
+  to: OrderStatus,
+  actor: User,
+  extra: {
+    timestampField?: "startedAt" | "completedAt" | "cancelledAt";
+    cancellationReason?: string;
+  } = {},
+) {
+  return prisma.$transaction(async (tx) => {
+    const order = await tx.order.findUnique({ where: { id: orderId } });
+    if (!order) throw new OrderValidationError(`Order ${orderId} not found`);
+
+    assertTransition(order.status as OrderStatus, to);
+
+    const now = new Date();
+    const updated = await tx.order.update({
+      where: { id: orderId },
+      data: {
+        status: to,
+        ...(extra.timestampField ? { [extra.timestampField]: now } : {}),
+        ...(extra.cancellationReason ? { cancellationReason: extra.cancellationReason } : {}),
+      },
+      include: orderInclude,
+    });
+
+    await appendAuditLog(tx, {
+      actorId: actor.id,
+      action: "ORDER_STATUS_CHANGED",
+      entityType: "Order",
+      entityId: orderId,
+      metadata: {
+        from: order.status,
+        to,
+        ...(extra.cancellationReason ? { reason: extra.cancellationReason } : {}),
+      },
+    });
+
+    return updated;
+  });
+}
+
+export async function startOrder(orderId: string, actor: User) {
+  return transitionOrder(orderId, "IN_PROGRESS", actor, { timestampField: "startedAt" });
+}
+
+export async function completeOrder(orderId: string, actor: User) {
+  requireRole(actor, "ADMIN");
+  return transitionOrder(orderId, "COMPLETED", actor, { timestampField: "completedAt" });
+}
+
+export async function cancelOrder(orderId: string, actor: User, reason: string) {
+  if (!reason.trim()) {
+    throw new OrderValidationError("Cancellation reason is required");
+  }
+  return transitionOrder(orderId, "CANCELLED", actor, {
+    timestampField: "cancelledAt",
+    cancellationReason: reason.trim(),
   });
 }

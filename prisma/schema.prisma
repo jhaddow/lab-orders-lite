@@ -89,6 +89,9 @@ model Price {
 
 enum OrderStatus {
   PENDING
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
 }
 
 model Order {
@@ -100,6 +103,10 @@ model Order {
   currency           String      @default("USD")
   estimatedReadyDate DateTime    @db.Date
   createdAt          DateTime    @default(now())
+  startedAt          DateTime?
+  completedAt        DateTime?
+  cancelledAt        DateTime?
+  cancellationReason String?
 
   patient   Patient     @relation(fields: [patientId], references: [id], onDelete: Restrict)
   createdBy User        @relation("OrderCreatedBy", fields: [createdByUserId], references: [id], onDelete: Restrict)
@@ -108,6 +115,7 @@ model Order {
   @@index([patientId])
   @@index([createdByUserId])
   @@index([createdAt])
+  @@index([status])
 }
 
 model OrderItem {

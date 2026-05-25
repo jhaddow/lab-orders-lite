@@ -6,3 +6,9 @@ export const orderSchema = z.object({
 });
 
 export type OrderInput = z.infer<typeof orderSchema>;
+
+export const cancelOrderSchema = z.object({
+  reason: z.string().trim().min(1, "Please give a reason").max(500),
+});
+
+export type CancelOrderInput = z.infer<typeof cancelOrderSchema>;

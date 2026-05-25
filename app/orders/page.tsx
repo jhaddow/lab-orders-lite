@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
+import { statusBadgeClass, statusLabel } from "./status-style";
 import {
   Table,
   TableBody,
@@ -84,10 +85,10 @@ export default async function OrdersPage() {
                   <TableCell className="py-4">
                     <Badge
                       variant="outline"
-                      className="rounded-full border-primary/30 bg-primary/8 text-[10px] tracking-[0.12em] uppercase font-medium text-primary"
+                      className={`rounded-full text-[10px] tracking-[0.12em] uppercase font-medium ${statusBadgeClass(o.status)}`}
                     >
-                      <span className="size-1 rounded-full bg-primary mr-1.5" />
-                      {o.status}
+                      <span className="size-1 rounded-full bg-current mr-1.5" />
+                      {statusLabel(o.status)}
                     </Badge>
                   </TableCell>
                   <TableCell className="py-4 text-right font-medium tabular-nums text-foreground">

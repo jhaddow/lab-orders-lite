@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { calculateEstimatedReadyDate, calculateOrderTotalCents } from "./domain";
+import {
+  assertTransition,
+  calculateEstimatedReadyDate,
+  calculateOrderTotalCents,
+  canTransition,
+  InvalidTransitionError,
+  type OrderStatus,
+} from "./domain";
 
 describe("calculateOrderTotalCents", () => {
   it("sums a single item", () => {
@@ -53,5 +60,44 @@ describe("calculateEstimatedReadyDate", () => {
 
   it("throws on empty input", () => {
     expect(() => calculateEstimatedReadyDate(base, [])).toThrow(/no items/);
+  });
+});
+
+describe("canTransition", () => {
+  // Full truth table — making the matrix explicit catches accidental changes
+  // to the workflow rules during refactors.
+  const cases: Array<[OrderStatus, OrderStatus, boolean]> = [
+    ["PENDING", "IN_PROGRESS", true],
+    ["PENDING", "CANCELLED", true],
+    ["PENDING", "COMPLETED", false],
+    ["PENDING", "PENDING", false],
+    ["IN_PROGRESS", "COMPLETED", true],
+    ["IN_PROGRESS", "CANCELLED", true],
+    ["IN_PROGRESS", "PENDING", false],
+    ["IN_PROGRESS", "IN_PROGRESS", false],
+    ["COMPLETED", "PENDING", false],
+    ["COMPLETED", "IN_PROGRESS", false],
+    ["COMPLETED", "CANCELLED", false],
+    ["COMPLETED", "COMPLETED", false],
+    ["CANCELLED", "PENDING", false],
+    ["CANCELLED", "IN_PROGRESS", false],
+    ["CANCELLED", "COMPLETED", false],
+    ["CANCELLED", "CANCELLED", false],
+  ];
+
+  for (const [from, to, allowed] of cases) {
+    it(`${from} → ${to} is ${allowed ? "allowed" : "rejected"}`, () => {
+      expect(canTransition(from, to)).toBe(allowed);
+    });
+  }
+});
+
+describe("assertTransition", () => {
+  it("returns silently for an allowed transition", () => {
+    expect(() => assertTransition("PENDING", "IN_PROGRESS")).not.toThrow();
+  });
+
+  it("throws InvalidTransitionError for a disallowed transition", () => {
+    expect(() => assertTransition("PENDING", "COMPLETED")).toThrow(InvalidTransitionError);
   });
 });

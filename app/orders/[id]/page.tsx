@@ -11,6 +11,10 @@ import {
 } from "@/components/ui/table";
 import { getOrder } from "@/features/orders/repo";
 import { asCurrency, formatMoney } from "@/lib/money";
+import { getCurrentUser } from "@/lib/auth";
+import { OrderActions } from "./order-actions";
+import { AuditTrail } from "./audit-trail";
+import { statusBadgeClass, statusLabel } from "../status-style";
 
 function formatDate(d: Date) {
   return new Intl.DateTimeFormat("en-US", { dateStyle: "medium" }).format(d);
@@ -18,7 +22,7 @@ function formatDate(d: Date) {
 
 export default async function OrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const order = await getOrder(id);
+  const [order, currentUser] = await Promise.all([getOrder(id), getCurrentUser()]);
   if (!order) notFound();
   const currency = asCurrency(order.currency);
   const maxTurnaroundDays = Math.max(...order.items.map((i) => i.turnaroundDaysAtOrder));
@@ -48,13 +52,20 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
           </div>
           <Badge
             variant="outline"
-            className="rounded-full border-primary/30 bg-primary/8 text-[10px] tracking-[0.14em] uppercase font-medium text-primary"
+            className={`rounded-full text-[10px] tracking-[0.14em] uppercase font-medium ${statusBadgeClass(order.status)}`}
           >
-            <span className="size-1 rounded-full bg-primary mr-1.5" />
-            {order.status}
+            <span className="size-1 rounded-full bg-current mr-1.5" />
+            {statusLabel(order.status)}
           </Badge>
         </div>
       </header>
+
+      {order.status === "CANCELLED" && order.cancellationReason && (
+        <div className="rounded-xl border border-muted-foreground/20 bg-muted/40 px-5 py-4">
+          <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">Cancelled</p>
+          <p className="mt-1 text-sm text-foreground">{order.cancellationReason}</p>
+        </div>
+      )}
 
       <section
         aria-label="Order summary"
@@ -139,6 +150,14 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
           </Table>
         </div>
       </section>
+
+      <OrderActions
+        orderId={order.id}
+        status={order.status}
+        isAdmin={currentUser.role === "ADMIN"}
+      />
+
+      <AuditTrail orderId={order.id} />
     </div>
   );
 }

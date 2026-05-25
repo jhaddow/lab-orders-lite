@@ -2,7 +2,17 @@ import { describe, expect, it } from "vitest";
 import { prisma } from "@/lib/prisma";
 import { createPatient } from "@/features/patients/repo";
 import { getLabTests, setLabTestPrice } from "@/features/lab-tests/repo";
-import { createOrder, getOrder, getOrders, OrderValidationError } from "@/features/orders/repo";
+import {
+  cancelOrder,
+  completeOrder,
+  createOrder,
+  getOrder,
+  getOrders,
+  OrderValidationError,
+  startOrder,
+} from "@/features/orders/repo";
+import { InvalidTransitionError } from "@/features/orders/domain";
+import { AuthorizationError } from "@/lib/auth";
 import { getSeedAdmin, getSeedClinician } from "./setup";
 
 async function setupPatient() {
@@ -200,6 +210,78 @@ describe("order repository", () => {
     it("returns null for a missing order", async () => {
       expect(await getOrder("does-not-exist")).toBeNull();
     });
+  });
+});
+
+describe("order workflow", () => {
+  async function newOrder() {
+    const actor = await getSeedClinician();
+    const patient = await setupPatient();
+    const cbcId = await getLabTestIdByCode("CBC");
+    const order = await createOrder({ patientId: patient.id, labTestIds: [cbcId] }, actor);
+    return { actor, order };
+  }
+
+  it("PENDING → IN_PROGRESS via startOrder, stamps startedAt and audits", async () => {
+    const { actor, order } = await newOrder();
+    const started = await startOrder(order.id, actor);
+    expect(started.status).toBe("IN_PROGRESS");
+    expect(started.startedAt).not.toBeNull();
+
+    const audit = await prisma.auditLog.findMany({
+      where: { entityType: "Order", entityId: order.id, action: "ORDER_STATUS_CHANGED" },
+    });
+    expect(audit).toHaveLength(1);
+    expect(audit[0]?.metadata).toMatchObject({ from: "PENDING", to: "IN_PROGRESS" });
+  });
+
+  it("IN_PROGRESS → COMPLETED requires ADMIN; clinician is rejected", async () => {
+    const { actor, order } = await newOrder();
+    await startOrder(order.id, actor);
+    await expect(completeOrder(order.id, actor)).rejects.toBeInstanceOf(AuthorizationError);
+  });
+
+  it("IN_PROGRESS → COMPLETED works for an admin and stamps completedAt", async () => {
+    const { actor, order } = await newOrder();
+    const admin = await getSeedAdmin();
+    await startOrder(order.id, actor);
+    const completed = await completeOrder(order.id, admin);
+    expect(completed.status).toBe("COMPLETED");
+    expect(completed.completedAt).not.toBeNull();
+  });
+
+  it("cancel from PENDING records reason and stamps cancelledAt", async () => {
+    const { actor, order } = await newOrder();
+    const cancelled = await cancelOrder(order.id, actor, "wrong patient");
+    expect(cancelled.status).toBe("CANCELLED");
+    expect(cancelled.cancellationReason).toBe("wrong patient");
+    expect(cancelled.cancelledAt).not.toBeNull();
+
+    const audit = await prisma.auditLog.findMany({
+      where: { entityType: "Order", entityId: order.id, action: "ORDER_STATUS_CHANGED" },
+    });
+    expect(audit[0]?.metadata).toMatchObject({
+      from: "PENDING",
+      to: "CANCELLED",
+      reason: "wrong patient",
+    });
+  });
+
+  it("rejects illegal transitions (PENDING → COMPLETED)", async () => {
+    const { order } = await newOrder();
+    const admin = await getSeedAdmin();
+    await expect(completeOrder(order.id, admin)).rejects.toBeInstanceOf(InvalidTransitionError);
+  });
+
+  it("rejects transitions out of terminal states", async () => {
+    const { actor, order } = await newOrder();
+    await cancelOrder(order.id, actor, "duplicate");
+    await expect(startOrder(order.id, actor)).rejects.toBeInstanceOf(InvalidTransitionError);
+  });
+
+  it("rejects a blank cancellation reason", async () => {
+    const { actor, order } = await newOrder();
+    await expect(cancelOrder(order.id, actor, "   ")).rejects.toBeInstanceOf(OrderValidationError);
   });
 });
 

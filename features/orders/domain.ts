@@ -24,3 +24,32 @@ export function calculateEstimatedReadyDate(
   result.setUTCDate(result.getUTCDate() + maxTurnaround);
   return result;
 }
+
+// ---- Status workflow --------------------------------------------------
+
+export type OrderStatus = "PENDING" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
+
+const ALLOWED_TRANSITIONS: Record<OrderStatus, readonly OrderStatus[]> = {
+  PENDING: ["IN_PROGRESS", "CANCELLED"],
+  IN_PROGRESS: ["COMPLETED", "CANCELLED"],
+  COMPLETED: [],
+  CANCELLED: [],
+};
+
+export function canTransition(from: OrderStatus, to: OrderStatus): boolean {
+  return ALLOWED_TRANSITIONS[from].includes(to);
+}
+
+export class InvalidTransitionError extends Error {
+  constructor(from: OrderStatus, to: OrderStatus) {
+    super(`Cannot transition order from ${from} to ${to}`);
+    this.name = "InvalidTransitionError";
+    Error.captureStackTrace?.(this, InvalidTransitionError);
+  }
+}
+
+export function assertTransition(from: OrderStatus, to: OrderStatus): void {
+  if (!canTransition(from, to)) {
+    throw new InvalidTransitionError(from, to);
+  }
+}
