@@ -43,3 +43,7 @@ next-env.d.ts
 
 # prisma generated client
 /lib/generated
+
+# Claude Code / plugin runtime artifacts (per-machine, not project content)
+/.claude/settings.json
+/skills-lock.json
