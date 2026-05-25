@@ -97,7 +97,13 @@ export function OrderForm({
               id="patientId"
               className="h-10 w-full sm:max-w-sm px-3 text-[15px] bg-card"
             >
-              <SelectValue placeholder="Select a patient" />
+              <SelectValue placeholder="Select a patient">
+                {(value: string | null) => {
+                  if (!value) return null;
+                  const p = patients.find((x) => x.id === value);
+                  return p ? `${p.lastName}, ${p.firstName}` : value;
+                }}
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
               {patients.length === 0 ? (
