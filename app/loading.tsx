@@ -1,13 +1,18 @@
 export default function Loading() {
   return (
-    <div className="space-y-6 animate-pulse">
-      <div className="h-8 w-48 rounded bg-zinc-200" />
-      <div className="rounded-md border bg-white">
-        <div className="h-10 border-b bg-zinc-50" />
-        <div className="divide-y">
+    <div className="space-y-8 animate-pulse">
+      <div className="space-y-2">
+        <div className="h-3 w-16 rounded bg-muted" />
+        <div className="h-9 w-56 rounded bg-muted" />
+      </div>
+      <div className="rounded-xl border border-border bg-card overflow-hidden">
+        <div className="h-11 border-b border-border bg-muted/40" />
+        <div className="divide-y divide-border">
           {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="h-12 px-4 flex items-center">
-              <div className="h-4 w-1/3 rounded bg-zinc-100" />
+            <div key={i} className="h-14 px-5 flex items-center gap-6">
+              <div className="h-3 w-1/4 rounded bg-muted" />
+              <div className="h-3 w-1/6 rounded bg-muted" />
+              <div className="h-3 w-1/5 rounded bg-muted" />
             </div>
           ))}
         </div>

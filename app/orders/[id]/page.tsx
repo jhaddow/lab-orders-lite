@@ -2,13 +2,6 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
   Table,
   TableBody,
   TableCell,
@@ -33,79 +26,143 @@ export default async function OrderDetailPage({
   if (!order) notFound();
 
   return (
-    <div className="space-y-6">
-      <div>
-        <Link href="/orders" className="text-sm text-zinc-600 hover:underline">
-          ← Back to orders
+    <div className="space-y-10">
+      <header className="space-y-4">
+        <Link
+          href="/orders"
+          className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <span aria-hidden className="mr-1.5">←</span> Back to orders
         </Link>
-        <div className="mt-2 flex items-center gap-3">
-          <h1 className="text-2xl font-semibold">Order</h1>
-          <Badge variant="secondary">{order.status}</Badge>
+        <div className="flex items-end justify-between gap-4 flex-wrap">
+          <div className="space-y-1.5">
+            <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
+              Order detail
+            </p>
+            <h1 className="font-display text-4xl tracking-tight">
+              {order.patient.lastName},{" "}
+              <span className="text-foreground/80">{order.patient.firstName}</span>
+            </h1>
+            <p className="text-xs text-muted-foreground font-mono tabular-nums pt-1">
+              {order.id}
+            </p>
+          </div>
+          <Badge
+            variant="outline"
+            className="rounded-full border-primary/30 bg-primary/8 text-[10px] tracking-[0.14em] uppercase font-medium text-primary"
+          >
+            <span className="size-1 rounded-full bg-primary mr-1.5" />
+            {order.status}
+          </Badge>
         </div>
-        <p className="text-xs text-zinc-500 mt-1 font-mono">{order.id}</p>
-      </div>
+      </header>
 
-      <div className="grid gap-4 sm:grid-cols-3">
-        <Card>
-          <CardHeader>
-            <CardDescription>Patient</CardDescription>
-            <CardTitle className="text-lg">
-              {order.patient.lastName}, {order.patient.firstName}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="text-sm text-zinc-600">
-            DOB {formatDate(order.patient.dateOfBirth)}
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardDescription>Total cost</CardDescription>
-            <CardTitle className="text-lg">
-              {formatMoney(order.totalCents, order.currency)}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="text-sm text-zinc-600">
-            Ordered {formatDate(order.createdAt)}
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardDescription>Estimated ready</CardDescription>
-            <CardTitle className="text-lg">
-              {formatDate(order.estimatedReadyDate)}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="text-sm text-zinc-600">
-            Based on the slowest test
-          </CardContent>
-        </Card>
-      </div>
+      <section
+        aria-label="Order summary"
+        className="rounded-xl border border-border bg-card overflow-hidden"
+      >
+        <div className="grid sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-border">
+          <Stat
+            label="Patient"
+            value={`${order.patient.lastName}, ${order.patient.firstName}`}
+            note={`DOB ${formatDate(order.patient.dateOfBirth)}`}
+          />
+          <Stat
+            label="Total cost"
+            value={formatMoney(order.totalCents, order.currency)}
+            note={`Ordered ${formatDate(order.createdAt)}`}
+            highlight
+          />
+          <Stat
+            label="Estimated ready"
+            value={formatDate(order.estimatedReadyDate)}
+            note="Based on the slowest test"
+          />
+        </div>
+      </section>
 
-      <div className="rounded-md border bg-white">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Code</TableHead>
-              <TableHead>Test</TableHead>
-              <TableHead>Turnaround</TableHead>
-              <TableHead className="text-right">Price (at order)</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {order.items.map((item) => (
-              <TableRow key={item.id}>
-                <TableCell className="font-mono text-xs">
-                  {item.labTest.code}
-                </TableCell>
-                <TableCell className="font-medium">{item.labTest.name}</TableCell>
-                <TableCell>{item.turnaroundDaysAtOrder}d</TableCell>
-                <TableCell className="text-right">
-                  {formatMoney(item.priceCentsAtOrder, order.currency)}
-                </TableCell>
+      <section className="space-y-3">
+        <div className="flex items-baseline justify-between">
+          <h2 className="font-display text-lg tracking-tight">Tests</h2>
+          <span className="text-xs text-muted-foreground tabular-nums">
+            {order.items.length}{" "}
+            {order.items.length === 1 ? "item" : "items"}
+          </span>
+        </div>
+        <div className="rounded-xl border border-border bg-card overflow-hidden">
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-muted/40 hover:bg-muted/40">
+                <TableHead className="pl-5 text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
+                  Code
+                </TableHead>
+                <TableHead className="text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
+                  Test
+                </TableHead>
+                <TableHead className="text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
+                  Turnaround
+                </TableHead>
+                <TableHead className="pr-5 text-right text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
+                  Price (at order)
+                </TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {order.items.map((item) => (
+                <TableRow key={item.id} className="hover:bg-muted/30">
+                  <TableCell className="pl-5 py-4 font-mono text-xs text-foreground/70 tabular-nums">
+                    {item.labTest.code}
+                  </TableCell>
+                  <TableCell className="py-4 font-medium text-foreground">
+                    {item.labTest.name}
+                  </TableCell>
+                  <TableCell className="py-4 text-muted-foreground tabular-nums">
+                    {item.turnaroundDaysAtOrder}d
+                  </TableCell>
+                  <TableCell className="pr-5 py-4 text-right font-medium tabular-nums text-foreground">
+                    {formatMoney(item.priceCentsAtOrder, order.currency)}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+            <tfoot className="border-t border-border bg-muted/30">
+              <tr>
+                <td colSpan={3} className="pl-5 py-3.5 text-right text-xs uppercase tracking-[0.12em] text-muted-foreground">
+                  Total
+                </td>
+                <td className="pr-5 py-3.5 text-right font-display text-lg tabular-nums text-foreground">
+                  {formatMoney(order.totalCents, order.currency)}
+                </td>
+              </tr>
+            </tfoot>
+          </Table>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function Stat({
+  label,
+  value,
+  note,
+  highlight = false,
+}: {
+  label: string;
+  value: string;
+  note: string;
+  highlight?: boolean;
+}) {
+  return (
+    <div className={`px-5 py-5 ${highlight ? "bg-accent/30" : ""}`}>
+      <div className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+        {label}
+      </div>
+      <div className="mt-1.5 font-display text-2xl tracking-tight tabular-nums text-foreground">
+        {value}
+      </div>
+      <div className="mt-1 text-xs text-muted-foreground tabular-nums">
+        {note}
       </div>
     </div>
   );

@@ -18,42 +18,71 @@ export default async function PatientsPage() {
   const patients = await getPatients();
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Patients</h1>
-        <Link href="/patients/new" className={buttonVariants()}>
+    <div className="space-y-8">
+      <header className="flex items-end justify-between gap-4 flex-wrap">
+        <div className="space-y-1.5">
+          <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
+            Records
+          </p>
+          <h1 className="font-display text-4xl tracking-tight">Patients</h1>
+        </div>
+        <Link
+          href="/patients/new"
+          className={`${buttonVariants()} h-10 px-4`}
+        >
           New patient
         </Link>
-      </div>
+      </header>
 
       {patients.length === 0 ? (
-        <div className="rounded-md border bg-white p-8 text-center text-sm text-zinc-600">
-          No patients yet.{" "}
-          <Link href="/patients/new" className="underline">
-            Add your first patient
-          </Link>
-          .
+        <div className="rounded-xl border border-dashed border-border bg-card/50 p-12 text-center space-y-3">
+          <p className="font-display text-xl text-foreground">No patients yet</p>
+          <p className="text-sm text-muted-foreground">
+            Get started by adding your first patient.
+          </p>
+          <div className="pt-1">
+            <Link
+              href="/patients/new"
+              className={`${buttonVariants({ variant: "outline" })} h-9 px-4`}
+            >
+              Add patient
+            </Link>
+          </div>
         </div>
       ) : (
-        <div className="rounded-md border bg-white">
+        <div className="rounded-xl border border-border bg-card overflow-hidden">
           <Table>
             <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Date of birth</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Phone</TableHead>
+              <TableRow className="bg-muted/40 hover:bg-muted/40">
+                <TableHead className="pl-5 text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
+                  Name
+                </TableHead>
+                <TableHead className="text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
+                  Date of birth
+                </TableHead>
+                <TableHead className="text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
+                  Email
+                </TableHead>
+                <TableHead className="pr-5 text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
+                  Phone
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {patients.map((p) => (
-                <TableRow key={p.id}>
-                  <TableCell className="font-medium">
+                <TableRow key={p.id} className="hover:bg-muted/30">
+                  <TableCell className="pl-5 py-4 font-medium text-foreground">
                     {p.lastName}, {p.firstName}
                   </TableCell>
-                  <TableCell>{formatDate(p.dateOfBirth)}</TableCell>
-                  <TableCell className="text-zinc-600">{p.email ?? "—"}</TableCell>
-                  <TableCell className="text-zinc-600">{p.phone ?? "—"}</TableCell>
+                  <TableCell className="py-4 tabular-nums text-foreground/80">
+                    {formatDate(p.dateOfBirth)}
+                  </TableCell>
+                  <TableCell className="py-4 text-muted-foreground">
+                    {p.email ?? <span className="text-border">—</span>}
+                  </TableCell>
+                  <TableCell className="pr-5 py-4 text-muted-foreground tabular-nums">
+                    {p.phone ?? <span className="text-border">—</span>}
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>

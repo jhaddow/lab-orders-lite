@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { buttonVariants } from "@/components/ui/button";
 import { OrderForm } from "@/components/order-form";
 import { getPatients } from "@/lib/db/patients";
 import { getLabTests } from "@/lib/db/lab-tests";
@@ -7,21 +8,38 @@ export default async function NewOrderPage() {
   const [patients, labTests] = await Promise.all([getPatients(), getLabTests()]);
 
   return (
-    <div className="space-y-6">
-      <div>
-        <Link href="/orders" className="text-sm text-zinc-600 hover:underline">
-          ← Back to orders
+    <div className="space-y-8">
+      <header className="space-y-3">
+        <Link
+          href="/orders"
+          className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <span aria-hidden className="mr-1.5">←</span> Back to orders
         </Link>
-        <h1 className="text-2xl font-semibold mt-2">New order</h1>
-      </div>
+        <div className="space-y-1.5">
+          <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
+            New order
+          </p>
+          <h1 className="font-display text-4xl tracking-tight">Create an order</h1>
+        </div>
+      </header>
 
       {patients.length === 0 ? (
-        <div className="rounded-md border bg-white p-6 text-sm text-zinc-700">
-          You need at least one patient before creating an order.{" "}
-          <Link href="/patients/new" className="underline">
-            Add a patient
-          </Link>
-          .
+        <div className="rounded-xl border border-dashed border-border bg-card/50 p-12 text-center space-y-3 max-w-xl">
+          <p className="font-display text-xl text-foreground">
+            No patients on file
+          </p>
+          <p className="text-sm text-muted-foreground">
+            You need at least one patient before creating an order.
+          </p>
+          <div className="pt-1">
+            <Link
+              href="/patients/new"
+              className={`${buttonVariants({ variant: "outline" })} h-9 px-4`}
+            >
+              Add a patient
+            </Link>
+          </div>
         </div>
       ) : (
         <OrderForm

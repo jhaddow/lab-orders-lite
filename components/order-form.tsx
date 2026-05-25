@@ -31,7 +31,11 @@ export type LabTestOption = {
 
 function FieldError({ messages }: { messages?: string[] }) {
   if (!messages?.length) return null;
-  return <p className="text-sm text-red-600 mt-1">{messages[0]}</p>;
+  return <p className="text-xs text-destructive">{messages[0]}</p>;
+}
+
+function formatDate(d: Date) {
+  return new Intl.DateTimeFormat("en-US", { dateStyle: "medium" }).format(d);
 }
 
 export function OrderForm({
@@ -67,6 +71,7 @@ export function OrderForm({
       total,
       currency: selectedTests[0].currency,
       readyDate: ready,
+      count: selectedTests.length,
     };
   }, [selectedTests]);
 
@@ -80,44 +85,56 @@ export function OrderForm({
   }
 
   return (
-    <form action={formAction} className="space-y-6 max-w-2xl">
-      <div>
-        <Label htmlFor="patientId">Patient</Label>
-        <Select
-          name="patientId"
-          value={patientId}
-          onValueChange={(v) => setPatientId(v ?? "")}
-        >
-          <SelectTrigger id="patientId">
-            <SelectValue placeholder="Select a patient" />
-          </SelectTrigger>
-          <SelectContent>
-            {patients.length === 0 ? (
-              <div className="p-2 text-sm text-zinc-600">
-                No patients yet — create one first.
-              </div>
-            ) : (
-              patients.map((p) => (
-                <SelectItem key={p.id} value={p.id}>
-                  {p.lastName}, {p.firstName}
-                </SelectItem>
-              ))
-            )}
-          </SelectContent>
-        </Select>
-        <FieldError messages={fieldErrors.patientId} />
-      </div>
+    <form action={formAction} className="space-y-8 max-w-3xl">
+      <section className="space-y-3">
+        <div className="space-y-2">
+          <Label htmlFor="patientId">Patient</Label>
+          <Select
+            name="patientId"
+            value={patientId}
+            onValueChange={(v) => setPatientId(v ?? "")}
+          >
+            <SelectTrigger
+              id="patientId"
+              className="h-10 w-full sm:max-w-sm px-3 text-[15px] bg-card"
+            >
+              <SelectValue placeholder="Select a patient" />
+            </SelectTrigger>
+            <SelectContent>
+              {patients.length === 0 ? (
+                <div className="p-3 text-sm text-muted-foreground">
+                  No patients yet — create one first.
+                </div>
+              ) : (
+                patients.map((p) => (
+                  <SelectItem key={p.id} value={p.id}>
+                    {p.lastName}, {p.firstName}
+                  </SelectItem>
+                ))
+              )}
+            </SelectContent>
+          </Select>
+          <FieldError messages={fieldErrors.patientId} />
+        </div>
+      </section>
 
-      <div>
-        <Label>Lab tests</Label>
-        <div className="mt-2 rounded-md border bg-white divide-y">
+      <section className="space-y-3">
+        <div className="flex items-baseline justify-between">
+          <Label>Lab tests</Label>
+          <span className="text-xs text-muted-foreground tabular-nums">
+            {selectedTestIds.size} selected
+          </span>
+        </div>
+        <div className="rounded-xl border border-border bg-card overflow-hidden divide-y divide-border">
           {labTests.map((t) => {
             const checked = selectedTestIds.has(t.id);
             return (
               <label
                 key={t.id}
                 htmlFor={`test-${t.id}`}
-                className="flex items-center gap-3 p-3 cursor-pointer hover:bg-zinc-50"
+                className={`flex items-center gap-4 px-4 py-3.5 cursor-pointer transition-colors ${
+                  checked ? "bg-accent/40" : "hover:bg-muted/60"
+                }`}
               >
                 <Checkbox
                   id={`test-${t.id}`}
@@ -126,14 +143,18 @@ export function OrderForm({
                   checked={checked}
                   onCheckedChange={(c) => toggleTest(t.id, c === true)}
                 />
-                <div className="flex-1 flex items-center justify-between">
-                  <div>
-                    <div className="font-medium">{t.name}</div>
-                    <div className="text-xs text-zinc-600">
-                      {t.code} · {t.turnaroundDays}d turnaround
+                <div className="flex-1 flex items-center justify-between gap-4">
+                  <div className="min-w-0">
+                    <div className="font-medium text-[15px] text-foreground truncate">
+                      {t.name}
+                    </div>
+                    <div className="mt-0.5 text-xs text-muted-foreground tabular-nums">
+                      <span className="font-mono text-foreground/70">{t.code}</span>
+                      <span className="mx-1.5 text-border">·</span>
+                      {t.turnaroundDays}d turnaround
                     </div>
                   </div>
-                  <div className="text-sm font-medium">
+                  <div className="text-[15px] font-medium tabular-nums text-foreground">
                     {formatMoney(t.priceCents, t.currency)}
                   </div>
                 </div>
@@ -142,37 +163,53 @@ export function OrderForm({
           })}
         </div>
         <FieldError messages={fieldErrors.labTestIds} />
-      </div>
+      </section>
 
       {preview && (
-        <div className="rounded-md border bg-white p-4 space-y-2">
-          <div className="flex justify-between text-sm">
-            <span className="text-zinc-600">Total cost</span>
-            <span className="font-medium">
-              {formatMoney(preview.total, preview.currency)}
-            </span>
+        <section
+          aria-label="Order summary"
+          className="rounded-xl border border-border bg-card overflow-hidden"
+        >
+          <div className="grid sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-border">
+            <div className="px-5 py-4">
+              <div className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+                Total cost
+              </div>
+              <div className="mt-1 font-display text-3xl tabular-nums text-foreground">
+                {formatMoney(preview.total, preview.currency)}
+              </div>
+              <div className="mt-0.5 text-xs text-muted-foreground">
+                Across {preview.count} {preview.count === 1 ? "test" : "tests"}
+              </div>
+            </div>
+            <div className="px-5 py-4">
+              <div className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+                Estimated ready
+              </div>
+              <div className="mt-1 font-display text-3xl tabular-nums text-foreground">
+                {formatDate(preview.readyDate)}
+              </div>
+              <div className="mt-0.5 text-xs text-muted-foreground">
+                Based on the slowest selected test
+              </div>
+            </div>
           </div>
-          <div className="flex justify-between text-sm">
-            <span className="text-zinc-600">Estimated ready</span>
-            <span className="font-medium">
-              {new Intl.DateTimeFormat("en-US", {
-                dateStyle: "medium",
-              }).format(preview.readyDate)}
-            </span>
-          </div>
-        </div>
+        </section>
       )}
 
       {state.status === "error" && !Object.keys(fieldErrors).length && (
-        <p className="text-sm text-red-600">{state.message}</p>
+        <p className="text-sm text-destructive">{state.message}</p>
       )}
 
-      <Button
-        type="submit"
-        disabled={pending || !patientId || selectedTestIds.size === 0}
-      >
-        {pending ? "Creating…" : "Create order"}
-      </Button>
+      <div className="flex items-center justify-end gap-3 pt-2 border-t border-border/70">
+        <Button
+          type="submit"
+          disabled={pending || !patientId || selectedTestIds.size === 0}
+          className="h-10 px-5"
+        >
+          {pending ? "Creating…" : "Create order"}
+        </Button>
+      </div>
     </form>
   );
 }

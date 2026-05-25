@@ -20,56 +20,99 @@ export default async function OrdersPage() {
   const orders = await getOrders();
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Orders</h1>
-        <Link href="/orders/new" className={buttonVariants()}>
+    <div className="space-y-8">
+      <header className="flex items-end justify-between gap-4 flex-wrap">
+        <div className="space-y-1.5">
+          <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
+            Activity
+          </p>
+          <h1 className="font-display text-4xl tracking-tight">Orders</h1>
+        </div>
+        <Link href="/orders/new" className={`${buttonVariants()} h-10 px-4`}>
           New order
         </Link>
-      </div>
+      </header>
 
       {orders.length === 0 ? (
-        <div className="rounded-md border bg-white p-8 text-center text-sm text-zinc-600">
-          No orders yet.{" "}
-          <Link href="/orders/new" className="underline">
-            Create your first order
-          </Link>
-          .
+        <div className="rounded-xl border border-dashed border-border bg-card/50 p-12 text-center space-y-3">
+          <p className="font-display text-xl text-foreground">No orders yet</p>
+          <p className="text-sm text-muted-foreground">
+            Create your first lab order for a patient.
+          </p>
+          <div className="pt-1">
+            <Link
+              href="/orders/new"
+              className={`${buttonVariants({ variant: "outline" })} h-9 px-4`}
+            >
+              Create order
+            </Link>
+          </div>
         </div>
       ) : (
-        <div className="rounded-md border bg-white">
+        <div className="rounded-xl border border-border bg-card overflow-hidden">
           <Table>
             <TableHeader>
-              <TableRow>
-                <TableHead>Patient</TableHead>
-                <TableHead>Tests</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Total</TableHead>
-                <TableHead>Ordered</TableHead>
-                <TableHead>Estimated ready</TableHead>
-                <TableHead></TableHead>
+              <TableRow className="bg-muted/40 hover:bg-muted/40">
+                <TableHead className="pl-5 text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
+                  Patient
+                </TableHead>
+                <TableHead className="text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
+                  Tests
+                </TableHead>
+                <TableHead className="text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
+                  Status
+                </TableHead>
+                <TableHead className="text-right text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
+                  Total
+                </TableHead>
+                <TableHead className="text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
+                  Ordered
+                </TableHead>
+                <TableHead className="text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
+                  Est. ready
+                </TableHead>
+                <TableHead className="pr-5"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {orders.map((o) => (
-                <TableRow key={o.id}>
-                  <TableCell className="font-medium">
+                <TableRow key={o.id} className="hover:bg-muted/30 group">
+                  <TableCell className="pl-5 py-4 font-medium text-foreground">
                     {o.patient.lastName}, {o.patient.firstName}
                   </TableCell>
-                  <TableCell>{o.items.length}</TableCell>
-                  <TableCell>
-                    <Badge variant="secondary">{o.status}</Badge>
+                  <TableCell className="py-4 tabular-nums text-muted-foreground">
+                    {o.items.length}
                   </TableCell>
-                  <TableCell>{formatMoney(o.totalCents, o.currency)}</TableCell>
-                  <TableCell className="text-zinc-600">
+                  <TableCell className="py-4">
+                    <Badge
+                      variant="outline"
+                      className="rounded-full border-primary/30 bg-primary/8 text-[10px] tracking-[0.12em] uppercase font-medium text-primary"
+                    >
+                      <span className="size-1 rounded-full bg-primary mr-1.5" />
+                      {o.status}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="py-4 text-right font-medium tabular-nums text-foreground">
+                    {formatMoney(o.totalCents, o.currency)}
+                  </TableCell>
+                  <TableCell className="py-4 text-muted-foreground tabular-nums">
                     {formatDate(o.createdAt)}
                   </TableCell>
-                  <TableCell className="text-zinc-600">
+                  <TableCell className="py-4 text-muted-foreground tabular-nums">
                     {formatDate(o.estimatedReadyDate)}
                   </TableCell>
-                  <TableCell>
-                    <Link href={`/orders/${o.id}`} className="text-sm underline">
+                  <TableCell className="pr-5 py-4">
+                    <Link
+                      href={`/orders/${o.id}`}
+                      className="inline-flex items-center text-sm text-foreground/70 group-hover:text-primary transition-colors"
+                    >
                       View
+                      <span
+                        aria-hidden
+                        className="ml-1 transition-transform group-hover:translate-x-0.5"
+                      >
+                        →
+                      </span>
                     </Link>
                   </TableCell>
                 </TableRow>
