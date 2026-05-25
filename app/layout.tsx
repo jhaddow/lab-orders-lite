@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Fraunces, Geist } from "next/font/google";
 import { NavLink } from "@/components/nav-link";
+import { getCurrentUserOptional } from "@/lib/auth";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -21,7 +22,8 @@ export const metadata: Metadata = {
   description: "Manage patients, lab tests, and orders.",
 };
 
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  const currentUser = await getCurrentUserOptional();
   return (
     <html lang="en" className={`${geistSans.variable} ${fraunces.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col bg-background text-foreground font-sans">
@@ -46,6 +48,29 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
               <span className="mx-2 h-4 w-px bg-border" aria-hidden />
               <NavLink href="/lab-tests">Lab tests</NavLink>
             </nav>
+            <div className="text-xs text-muted-foreground flex items-center gap-2">
+              {currentUser ? (
+                <>
+                  <span className="text-foreground/80">
+                    {currentUser.name}{" "}
+                    <span className="text-muted-foreground/70">({currentUser.role})</span>
+                  </span>
+                  <Link
+                    href="/sign-in-as"
+                    className="text-primary hover:underline underline-offset-2"
+                  >
+                    Switch
+                  </Link>
+                </>
+              ) : (
+                <Link
+                  href="/sign-in-as"
+                  className="text-primary hover:underline underline-offset-2"
+                >
+                  Sign in
+                </Link>
+              )}
+            </div>
           </div>
         </header>
         <main className="flex-1">

@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import type { z } from "zod";
+import { AuthorizationError, getCurrentUser, requireRole } from "@/lib/auth";
 import { createLabTest, LabTestValidationError, setLabTestPrice } from "./repo";
 import { createLabTestSchema, setPriceSchema } from "./schema";
 import type { FormState } from "@/lib/form-state";
@@ -14,6 +15,16 @@ export async function createLabTestAction(
   _prev: FormState<CreateFields>,
   formData: FormData,
 ): Promise<FormState<CreateFields>> {
+  const actor = await getCurrentUser();
+  try {
+    requireRole(actor, "ADMIN");
+  } catch (err) {
+    if (err instanceof AuthorizationError) {
+      return { status: "error", message: err.message };
+    }
+    throw err;
+  }
+
   const parsed = createLabTestSchema.safeParse({
     code: formData.get("code"),
     name: formData.get("name"),
@@ -31,7 +42,7 @@ export async function createLabTestAction(
 
   let createdId: string;
   try {
-    const created = await createLabTest(parsed.data);
+    const created = await createLabTest(parsed.data, actor);
     createdId = created.id;
   } catch (err) {
     if (err instanceof LabTestValidationError) {
@@ -49,6 +60,16 @@ export async function setLabTestPriceAction(
   _prev: FormState<SetPriceFields>,
   formData: FormData,
 ): Promise<FormState<SetPriceFields>> {
+  const actor = await getCurrentUser();
+  try {
+    requireRole(actor, "ADMIN");
+  } catch (err) {
+    if (err instanceof AuthorizationError) {
+      return { status: "error", message: err.message };
+    }
+    throw err;
+  }
+
   const parsed = setPriceSchema.safeParse({
     priceCents: formData.get("priceCents"),
   });
@@ -62,7 +83,7 @@ export async function setLabTestPriceAction(
   }
 
   try {
-    await setLabTestPrice(labTestId, parsed.data.priceCents);
+    await setLabTestPrice(labTestId, parsed.data.priceCents, actor);
   } catch (err) {
     if (err instanceof LabTestValidationError) {
       return {

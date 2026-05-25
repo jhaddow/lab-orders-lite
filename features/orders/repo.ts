@@ -1,4 +1,6 @@
+import type { User } from "@/lib/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
+import { appendAuditLog } from "@/features/audit/repo";
 import { calculateEstimatedReadyDate, calculateOrderTotalCents } from "./domain";
 
 export type CreateOrderInput = {
@@ -22,6 +24,7 @@ export class OrderValidationError extends Error {
 
 const orderInclude = {
   patient: true,
+  createdBy: true,
   items: { include: { labTest: true, price: true } },
 } as const;
 
@@ -39,7 +42,11 @@ export function getOrder(id: string) {
   });
 }
 
-export async function createOrder(input: CreateOrderInput, options: CreateOrderOptions = {}) {
+export async function createOrder(
+  input: CreateOrderInput,
+  actor: User,
+  options: CreateOrderOptions = {},
+) {
   if (input.labTestIds.length === 0) {
     throw new OrderValidationError("An order must include at least one lab test");
   }
@@ -99,15 +106,26 @@ export async function createOrder(input: CreateOrderInput, options: CreateOrderO
   const totalCents = calculateOrderTotalCents(totalsInput);
   const estimatedReadyDate = calculateEstimatedReadyDate(createdAt, totalsInput);
 
-  return prisma.order.create({
-    data: {
-      patientId: input.patientId,
-      currency,
-      totalCents,
-      estimatedReadyDate,
-      createdAt,
-      items: { create: items },
-    },
-    include: orderInclude,
+  return prisma.$transaction(async (tx) => {
+    const order = await tx.order.create({
+      data: {
+        patientId: input.patientId,
+        createdByUserId: actor.id,
+        currency,
+        totalCents,
+        estimatedReadyDate,
+        createdAt,
+        items: { create: items },
+      },
+      include: orderInclude,
+    });
+    await appendAuditLog(tx, {
+      actorId: actor.id,
+      action: "ORDER_CREATED",
+      entityType: "Order",
+      entityId: order.id,
+      metadata: { patientId: patient.id, totalCents, currency, itemCount: items.length },
+    });
+    return order;
   });
 }

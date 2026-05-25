@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import type { z } from "zod";
+import { getCurrentUser } from "@/lib/auth";
 import { createOrder, OrderValidationError } from "./repo";
 import { orderSchema } from "./schema";
 import type { FormState } from "@/lib/form-state";
@@ -13,6 +14,8 @@ export async function createOrderAction(
   _prev: FormState<OrderFields>,
   formData: FormData,
 ): Promise<FormState<OrderFields>> {
+  const actor = await getCurrentUser();
+
   const parsed = orderSchema.safeParse({
     patientId: formData.get("patientId"),
     labTestIds: formData.getAll("labTestIds"),
@@ -28,7 +31,7 @@ export async function createOrderAction(
 
   let orderId: string;
   try {
-    const order = await createOrder(parsed.data);
+    const order = await createOrder(parsed.data, actor);
     orderId = order.id;
   } catch (err) {
     if (err instanceof OrderValidationError) {

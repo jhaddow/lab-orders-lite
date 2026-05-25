@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import type { z } from "zod";
+import { getCurrentUser } from "@/lib/auth";
 import { createPatient } from "./repo";
 import { patientSchema } from "./schema";
 import type { FormState } from "@/lib/form-state";
@@ -13,6 +14,8 @@ export async function createPatientAction(
   _prev: FormState<PatientFields>,
   formData: FormData,
 ): Promise<FormState<PatientFields>> {
+  const actor = await getCurrentUser();
+
   const parsed = patientSchema.safeParse({
     firstName: formData.get("firstName"),
     lastName: formData.get("lastName"),
@@ -29,7 +32,7 @@ export async function createPatientAction(
     };
   }
 
-  await createPatient(parsed.data);
+  await createPatient(parsed.data, actor);
   revalidatePath("/patients");
   redirect("/patients");
 }

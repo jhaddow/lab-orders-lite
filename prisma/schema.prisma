@@ -7,6 +7,45 @@ datasource db {
   provider = "postgresql"
 }
 
+enum Role {
+  CLINICIAN
+  ADMIN
+}
+
+/// A clinician or admin user. In this take-home, the "session" is a signed
+/// cookie carrying the user id (no passwords) — see `lib/auth.ts`. Real
+/// production would swap NextAuth/Lucia in behind `getCurrentUser()` with
+/// no call-site changes.
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  role      Role
+  createdAt DateTime @default(now())
+
+  createdOrders Order[]    @relation("OrderCreatedBy")
+  auditEntries  AuditLog[]
+}
+
+/// Append-only audit trail. Every action that mutates a tracked entity
+/// writes one row inside the same transaction as the mutation. The metadata
+/// JSON carries action-specific detail (status from/to, cancellation reason,
+/// etc.) so the schema doesn't grow a column per action.
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorId    String
+  action     String
+  entityType String
+  entityId   String
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  actor User @relation(fields: [actorId], references: [id], onDelete: Restrict)
+
+  @@index([entityType, entityId, createdAt])
+  @@index([actorId, createdAt])
+}
+
 model Patient {
   id          String   @id @default(cuid())
   firstName   String
@@ -55,16 +94,19 @@ enum OrderStatus {
 model Order {
   id                 String      @id @default(cuid())
   patientId          String
+  createdByUserId    String
   status             OrderStatus @default(PENDING)
   totalCents         Int
   currency           String      @default("USD")
   estimatedReadyDate DateTime    @db.Date
   createdAt          DateTime    @default(now())
 
-  patient Patient     @relation(fields: [patientId], references: [id], onDelete: Restrict)
-  items   OrderItem[]
+  patient   Patient     @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  createdBy User        @relation("OrderCreatedBy", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  items     OrderItem[]
 
   @@index([patientId])
+  @@index([createdByUserId])
   @@index([createdAt])
 }
 

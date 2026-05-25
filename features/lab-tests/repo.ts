@@ -1,4 +1,6 @@
+import type { User } from "@/lib/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
+import { appendAuditLog } from "@/features/audit/repo";
 
 export type CreateLabTestInput = {
   code: string;
@@ -48,7 +50,7 @@ export function getLabTest(id: string) {
  * application layer for friendly errors; the DB has unique constraints on
  * both as a safety net.
  */
-export async function createLabTest(input: CreateLabTestInput) {
+export async function createLabTest(input: CreateLabTestInput, actor: User) {
   const trimmedName = input.name.trim();
   const trimmedCode = input.code.trim();
 
@@ -73,21 +75,35 @@ export async function createLabTest(input: CreateLabTestInput) {
     throw new LabTestValidationError(`A lab test with code "${trimmedCode}" already exists`);
   }
 
-  return prisma.labTest.create({
-    data: {
-      code: trimmedCode,
-      name: trimmedName,
-      turnaroundDays: input.turnaroundDays,
-      prices: {
-        create: {
-          priceCents: input.initialPriceCents,
-          currency: input.initialCurrency ?? "USD",
+  return prisma.$transaction(async (tx) => {
+    const labTest = await tx.labTest.create({
+      data: {
+        code: trimmedCode,
+        name: trimmedName,
+        turnaroundDays: input.turnaroundDays,
+        prices: {
+          create: {
+            priceCents: input.initialPriceCents,
+            currency: input.initialCurrency ?? "USD",
+          },
         },
       },
-    },
-    include: {
-      prices: { orderBy: { createdAt: "desc" } },
-    },
+      include: {
+        prices: { orderBy: { createdAt: "desc" } },
+      },
+    });
+    await appendAuditLog(tx, {
+      actorId: actor.id,
+      action: "LAB_TEST_CREATED",
+      entityType: "LabTest",
+      entityId: labTest.id,
+      metadata: {
+        code: labTest.code,
+        name: labTest.name,
+        initialPriceCents: input.initialPriceCents,
+      },
+    });
+    return labTest;
   });
 }
 
@@ -102,6 +118,7 @@ export async function createLabTest(input: CreateLabTestInput) {
 export async function setLabTestPrice(
   labTestId: string,
   priceCents: number,
+  actor: User,
   currency: string = "USD",
 ) {
   if (priceCents <= 0) {
@@ -116,7 +133,21 @@ export async function setLabTestPrice(
     throw new LabTestValidationError("New price is the same as the current price");
   }
 
-  return prisma.price.create({
-    data: { labTestId, priceCents, currency },
+  return prisma.$transaction(async (tx) => {
+    const price = await tx.price.create({
+      data: { labTestId, priceCents, currency },
+    });
+    await appendAuditLog(tx, {
+      actorId: actor.id,
+      action: "LAB_TEST_PRICE_CHANGED",
+      entityType: "LabTest",
+      entityId: labTestId,
+      metadata: {
+        priceCents,
+        currency,
+        previousPriceCents: latest?.priceCents ?? null,
+      },
+    });
+    return price;
   });
 }
