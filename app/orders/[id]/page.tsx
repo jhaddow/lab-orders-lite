@@ -25,6 +25,9 @@ export default async function OrderDetailPage({
   const order = await getOrder(id);
   if (!order) notFound();
   const currency = asCurrency(order.currency);
+  const maxTurnaroundDays = Math.max(
+    ...order.items.map((i) => i.turnaroundDaysAtOrder),
+  );
 
   return (
     <div className="space-y-10">
@@ -77,7 +80,7 @@ export default async function OrderDetailPage({
           <Stat
             label="Estimated ready"
             value={formatDate(order.estimatedReadyDate)}
-            note="Based on the slowest test"
+            note={`${maxTurnaroundDays} ${maxTurnaroundDays === 1 ? "day" : "days"} from order (slowest test)`}
           />
         </div>
       </section>
