@@ -25,12 +25,27 @@ model LabTest {
   id             String   @id @default(cuid())
   code           String   @unique
   name           String
-  priceCents     Int
-  currency       String   @default("USD")
   turnaroundDays Int
   createdAt      DateTime @default(now())
 
+  prices     Price[]
   orderItems OrderItem[]
+}
+
+/// Append-only price history per lab test. The newest row (by createdAt) is
+/// the catalog's current price; orders reference the specific Price record
+/// that was current when they were created, so historical totals never drift.
+model Price {
+  id         String   @id @default(cuid())
+  labTestId  String
+  priceCents Int
+  currency   String   @default("USD")
+  createdAt  DateTime @default(now())
+
+  labTest    LabTest     @relation(fields: [labTestId], references: [id], onDelete: Cascade)
+  orderItems OrderItem[]
+
+  @@index([labTestId, createdAt(sort: Desc)])
 }
 
 enum OrderStatus {
@@ -57,11 +72,13 @@ model OrderItem {
   id                    String @id @default(cuid())
   orderId               String
   labTestId             String
-  priceCentsAtOrder     Int
+  priceId               String
   turnaroundDaysAtOrder Int
 
   order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
   labTest LabTest @relation(fields: [labTestId], references: [id], onDelete: Restrict)
+  price   Price   @relation(fields: [priceId], references: [id], onDelete: Restrict)
 
   @@index([orderId])
+  @@index([priceId])
 }

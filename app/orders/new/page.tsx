@@ -1,11 +1,28 @@
 import Link from "next/link";
 import { buttonVariants } from "@/components/ui/button";
-import { OrderForm } from "@/features/orders/order-form";
+import { OrderForm, type LabTestOption } from "@/features/orders/order-form";
 import { getPatients } from "@/features/patients/repo";
 import { getLabTests } from "@/features/lab-tests/repo";
 
 export default async function NewOrderPage() {
   const [patients, labTests] = await Promise.all([getPatients(), getLabTests()]);
+
+  // Skip any lab test that doesn't yet have a price (invariant violation
+  // — shouldn't happen given the seed, but defends the form against bad data).
+  const labTestOptions: LabTestOption[] = labTests.flatMap((t) => {
+    const latest = t.prices[0];
+    if (!latest) return [];
+    return [
+      {
+        id: t.id,
+        code: t.code,
+        name: t.name,
+        turnaroundDays: t.turnaroundDays,
+        priceCents: latest.priceCents,
+        currency: latest.currency,
+      },
+    ];
+  });
 
   return (
     <div className="space-y-8">
@@ -48,14 +65,7 @@ export default async function NewOrderPage() {
             firstName: p.firstName,
             lastName: p.lastName,
           }))}
-          labTests={labTests.map((t) => ({
-            id: t.id,
-            code: t.code,
-            name: t.name,
-            priceCents: t.priceCents,
-            currency: t.currency,
-            turnaroundDays: t.turnaroundDays,
-          }))}
+          labTests={labTestOptions}
         />
       )}
     </div>

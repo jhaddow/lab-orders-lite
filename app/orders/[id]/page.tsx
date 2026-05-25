@@ -121,7 +121,10 @@ export default async function OrderDetailPage({
                     {item.turnaroundDaysAtOrder}d
                   </TableCell>
                   <TableCell className="pr-5 py-4 text-right font-medium tabular-nums text-foreground">
-                    {formatMoney(item.priceCentsAtOrder, currency)}
+                    {formatMoney(
+                      item.price.priceCents,
+                      asCurrency(item.price.currency),
+                    )}
                   </TableCell>
                 </TableRow>
               ))}

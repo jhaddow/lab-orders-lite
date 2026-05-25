@@ -23,23 +23,22 @@ export class OrderValidationError extends Error {
   }
 }
 
+const orderInclude = {
+  patient: true,
+  items: { include: { labTest: true, price: true } },
+} as const;
+
 export function getOrders() {
   return prisma.order.findMany({
     orderBy: { createdAt: "desc" },
-    include: {
-      patient: true,
-      items: { include: { labTest: true } },
-    },
+    include: orderInclude,
   });
 }
 
 export function getOrder(id: string) {
   return prisma.order.findUnique({
     where: { id },
-    include: {
-      patient: true,
-      items: { include: { labTest: true } },
-    },
+    include: orderInclude,
   });
 }
 
@@ -58,36 +57,57 @@ export async function createOrder(
     throw new OrderValidationError(`Patient ${input.patientId} not found`);
   }
 
+  // Fetch each requested lab test with its latest price attached.
   const labTests = await prisma.labTest.findMany({
     where: { id: { in: input.labTestIds } },
+    include: {
+      prices: { orderBy: { createdAt: "desc" }, take: 1 },
+    },
   });
   if (labTests.length !== input.labTestIds.length) {
     throw new OrderValidationError("One or more lab tests not found");
   }
 
-  // Destructure so the head is typed as LabTest (non-undefined), even with
-  // noUncheckedIndexedAccess; we've already proven the array is non-empty
-  // via the labTestIds length check at the top of this function.
-  const [head, ...rest] = labTests;
+  // Resolve the current price for each. Missing prices are an invariant
+  // violation — every lab test should always have at least one price.
+  const resolved = labTests.map((t) => {
+    const latest = t.prices[0];
+    if (!latest) {
+      throw new OrderValidationError(
+        `Lab test ${t.code} has no current price`,
+      );
+    }
+    return { labTest: t, price: latest };
+  });
+
+  // Destructure so `head` is typed non-undefined under noUncheckedIndexedAccess;
+  // the labTestIds length check above already guarantees a head exists.
+  const [head, ...rest] = resolved;
   if (!head) {
     throw new OrderValidationError("Order must include at least one lab test");
   }
-  if (rest.some((t) => t.currency !== head.currency)) {
+  if (rest.some((r) => r.price.currency !== head.price.currency)) {
     throw new OrderValidationError(
       "All lab tests in an order must share the same currency",
     );
   }
-  const currency = head.currency;
+  const currency = head.price.currency;
 
-  const items = labTests.map((t) => ({
-    labTestId: t.id,
-    priceCentsAtOrder: t.priceCents,
-    turnaroundDaysAtOrder: t.turnaroundDays,
+  const items = resolved.map((r) => ({
+    labTestId: r.labTest.id,
+    priceId: r.price.id,
+    turnaroundDaysAtOrder: r.labTest.turnaroundDays,
+  }));
+
+  // Domain helpers take a flat shape; build it inline.
+  const totalsInput = resolved.map((r) => ({
+    priceCentsAtOrder: r.price.priceCents,
+    turnaroundDaysAtOrder: r.labTest.turnaroundDays,
   }));
 
   const createdAt = options.now ?? new Date();
-  const totalCents = calculateOrderTotalCents(items);
-  const estimatedReadyDate = calculateEstimatedReadyDate(createdAt, items);
+  const totalCents = calculateOrderTotalCents(totalsInput);
+  const estimatedReadyDate = calculateEstimatedReadyDate(createdAt, totalsInput);
 
   return prisma.order.create({
     data: {
@@ -98,9 +118,6 @@ export async function createOrder(
       createdAt,
       items: { create: items },
     },
-    include: {
-      patient: true,
-      items: { include: { labTest: true } },
-    },
+    include: orderInclude,
   });
 }

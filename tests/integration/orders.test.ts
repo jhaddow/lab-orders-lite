@@ -2,6 +2,10 @@ import { describe, expect, it } from "vitest";
 import { prisma } from "@/lib/prisma";
 import { createPatient } from "@/features/patients/repo";
 import {
+  getLabTests,
+  setLabTestPrice,
+} from "@/features/lab-tests/repo";
+import {
   createOrder,
   getOrder,
   getOrders,
@@ -39,7 +43,7 @@ describe("order repository", () => {
       expect(order.items).toHaveLength(2);
     });
 
-    it("snapshots price and turnaround onto each line item", async () => {
+    it("links each line item to the current Price and snapshots turnaround", async () => {
       const patient = await setupPatient();
       const cbcId = await getLabTestIdByCode("CBC");      // 4500c / 1d
       const lipidId = await getLabTestIdByCode("LIPID");  // 6800c / 2d
@@ -50,15 +54,15 @@ describe("order repository", () => {
       });
 
       const snapshotted = order.items.map((i) => ({
-        priceCentsAtOrder: i.priceCentsAtOrder,
+        priceCents: i.price.priceCents,
         turnaroundDaysAtOrder: i.turnaroundDaysAtOrder,
       }));
       expect(snapshotted).toContainEqual({
-        priceCentsAtOrder: 4500,
+        priceCents: 4500,
         turnaroundDaysAtOrder: 1,
       });
       expect(snapshotted).toContainEqual({
-        priceCentsAtOrder: 6800,
+        priceCents: 6800,
         turnaroundDaysAtOrder: 2,
       });
     });
@@ -83,22 +87,30 @@ describe("order repository", () => {
       );
     });
 
-    it("preserves snapshot when underlying lab test price changes later", async () => {
+    it("references the price that was current at order time, even after later price changes", async () => {
       const patient = await setupPatient();
-      const cbcId = await getLabTestIdByCode("CBC");
-      const order = await createOrder({
+      const cbcId = await getLabTestIdByCode("CBC"); // seeded at 4500c
+
+      const firstOrder = await createOrder({
         patientId: patient.id,
         labTestIds: [cbcId],
       });
 
-      await prisma.labTest.update({
-        where: { id: cbcId },
-        data: { priceCents: 99999 },
+      // Catalog price changes — a new Price record is appended.
+      await setLabTestPrice(cbcId, 9900, "USD");
+
+      const secondOrder = await createOrder({
+        patientId: patient.id,
+        labTestIds: [cbcId],
       });
 
-      const fetched = await getOrder(order.id);
-      expect(fetched?.items[0]?.priceCentsAtOrder).toBe(4500);
-      expect(fetched?.totalCents).toBe(4500);
+      const first = await getOrder(firstOrder.id);
+      const second = await getOrder(secondOrder.id);
+
+      expect(first?.items[0]?.price.priceCents).toBe(4500);
+      expect(first?.totalCents).toBe(4500);
+      expect(second?.items[0]?.price.priceCents).toBe(9900);
+      expect(second?.totalCents).toBe(9900);
     });
 
     it("rejects an order with no lab tests", async () => {
@@ -128,14 +140,14 @@ describe("order repository", () => {
     it("rejects an order whose lab tests have mixed currencies", async () => {
       const patient = await setupPatient();
       const cbcId = await getLabTestIdByCode("CBC");  // USD
-      // Insert a non-USD test to force the mismatch
+
+      // Create a separate lab test priced in EUR.
       const eurTest = await prisma.labTest.create({
         data: {
           code: "EUR_TEST",
           name: "Euro Lab Test",
-          priceCents: 1000,
-          currency: "EUR",
           turnaroundDays: 1,
+          prices: { create: { priceCents: 1000, currency: "EUR" } },
         },
       });
 
@@ -144,6 +156,18 @@ describe("order repository", () => {
           patientId: patient.id,
           labTestIds: [cbcId, eurTest.id],
         }),
+      ).rejects.toBeInstanceOf(OrderValidationError);
+    });
+
+    it("rejects an order for a lab test that has no current price", async () => {
+      const patient = await setupPatient();
+      const cbcId = await getLabTestIdByCode("CBC");
+
+      // Strip every Price for CBC, violating the catalog invariant.
+      await prisma.price.deleteMany({ where: { labTestId: cbcId } });
+
+      await expect(
+        createOrder({ patientId: patient.id, labTestIds: [cbcId] }),
       ).rejects.toBeInstanceOf(OrderValidationError);
     });
   });
@@ -168,10 +192,24 @@ describe("order repository", () => {
       expect(orders.map((o) => o.id)).toEqual([second.id, first.id]);
       expect(orders[0]?.patient.firstName).toBe("Test");
       expect(orders[0]?.items[0]?.labTest.code).toBe("BMP");
+      expect(orders[0]?.items[0]?.price.priceCents).toBe(5200);
     });
 
     it("returns null for a missing order", async () => {
       expect(await getOrder("does-not-exist")).toBeNull();
     });
+  });
+});
+
+describe("lab test catalog", () => {
+  it("returns only the latest price per lab test", async () => {
+    const cbcId = await getLabTestIdByCode("CBC"); // seeded at 4500c
+
+    await setLabTestPrice(cbcId, 7700, "USD");
+
+    const catalog = await getLabTests();
+    const cbc = catalog.find((t) => t.code === "CBC");
+    expect(cbc?.prices).toHaveLength(1);
+    expect(cbc?.prices[0]?.priceCents).toBe(7700);
   });
 });
