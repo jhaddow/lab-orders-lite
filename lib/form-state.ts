@@ -1,6 +1,6 @@
 /**
  * Discriminated union shared by server actions backing useActionState forms.
- * Parametrise by the schema's field-name union so consumers get autocomplete
+ * Parametrize by the schema's field-name union so consumers get autocomplete
  * and typo-protection on `fieldErrors`.
  */
 export type FormState<Fields extends string = string> =

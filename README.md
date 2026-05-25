@@ -48,7 +48,7 @@ The integration suite uses a separate database (`lab_orders_lite_test`) configur
 
 ## Architecture
 
-The codebase is organised in **clear horizontal layers** so each layer has a single concern and is independently testable.
+The codebase is organized in **clear horizontal layers** so each layer has a single concern and is independently testable.
 
 ```
 app/                       # Next.js App Router — routing only
@@ -93,7 +93,7 @@ vitest.config.ts           # Two projects: `unit` and `integration`
 ### Key design decisions
 
 - **Money as Stripe-style integer minor units.** Prices stored as `Int priceCents` plus an explicit `currency` column (default `"USD"`). Avoids floating-point and `Decimal` round-trip bugs; the schema is multi-currency ready without a migration. A `CurrencyCode` branded type narrows callers at the formatter boundary.
-- **Price versioning via an append-only `Price` table.** Each `LabTest` has many `Price` records; the newest by `createdAt` is the catalog's current price. Changing a price means inserting a new `Price` row — never updating in place. Each `OrderItem` carries a `priceId` foreign key to the exact `Price` row that was current when the order was placed, so historical totals never drift. This is the data-modelling spine of the app: orders are *not* snapshots of price values, they're references to immutable price records. `Order.totalCents` and `estimatedReadyDate` are still persisted on the row for sort/filter performance. (Turnaround is still snapshotted on `OrderItem` — the same versioning treatment would be a natural follow-on if `LabTest.turnaroundDays` ever needed to change.)
+- **Price versioning via an append-only `Price` table.** Each `LabTest` has many `Price` records; the newest by `createdAt` is the catalog's current price. Changing a price means inserting a new `Price` row — never updating in place. Each `OrderItem` carries a `priceId` foreign key to the exact `Price` row that was current when the order was placed, so historical totals never drift. This is the data-modeling spine of the app: orders are *not* snapshots of price values, they're references to immutable price records. `Order.totalCents` and `estimatedReadyDate` are still persisted on the row for sort/filter performance. (Turnaround is still snapshotted on `OrderItem` — the same versioning treatment would be a natural follow-on if `LabTest.turnaroundDays` ever needed to change.)
 - **Feature-first folder layout.** Everything for a feature — repo, server actions, zod schema, domain logic, and the client form — lives in `features/<name>/`. Opening `features/patients/` shows the whole concept at a glance, rather than tracing one feature across four architectural layers. `lib/` is reserved for truly cross-cutting helpers (Prisma singleton, money formatting, the `FormState` type, the `cn()` utility). `app/` stays purely about routing.
 - **Repos are the only place Prisma is imported.** Pages and server actions go through `features/*/repo.ts`. Pure business rules (e.g. `calculateOrderTotalCents`, `calculateEstimatedReadyDate`) live in `features/orders/domain.ts` next to their unit tests.
 - **Server-rendered with server actions** (`useActionState`). No client-side fetch layer, no react-hook-form. Validation runs server-side via zod; field errors surface back into the form.
