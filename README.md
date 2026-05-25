@@ -10,8 +10,8 @@ The tech stack is: **Next.js 16 (App Router) + TypeScript + Tailwind + Shadcn UI
 
 ### Prerequisites
 
-- **Node.js** and **pnpm** — pinned versions live in `.tool-versions`. [asdf](https://asdf-vm.com/) is recommended: run `asdf install` from the repo root and you'll get the exact versions used here (Node 26.2.0, pnpm 11.3.0). Otherwise install matching versions by hand.
-- **Docker** — for the local Postgres container.
+- **Node.js** and **pnpm**. Pinned versions live in `.tool-versions`. [asdf](https://asdf-vm.com/) is recommended: run `asdf install` from the repo root and you'll get the exact versions used here (Node 26.2.0, pnpm 11.3.0). Otherwise install matching versions by hand.
+- **Docker** for the local Postgres container.
 
 ### First run
 
@@ -25,7 +25,7 @@ pnpm db:seed         # seed users + lab-test catalog
 pnpm dev             # http://localhost:3000
 ```
 
-Then visit `/sign-in-as` and pick a user (no passwords — dev-mode auth, see below). Three users are seeded: **Alex Morgan** (ADMIN), **Jane Patel** (CLINICIAN), **Sam Rivera** (CLINICIAN). Then create a patient and an order.
+Then visit `/sign-in-as` and pick a user (no passwords; dev-mode auth, see below). Three users are seeded: **Alex Morgan** (ADMIN), **Jane Patel** (CLINICIAN), **Sam Rivera** (CLINICIAN). Then create a patient and an order.
 
 ### Tests
 
@@ -62,7 +62,7 @@ Husky runs `lint-staged` (prettier + eslint --fix) on pre-commit, and `typecheck
 The codebase is organized in **clear horizontal layers** so each layer has a single concern and is independently testable.
 
 ```
-app/                       # Next.js App Router — routing only
+app/                       # Next.js App Router (routing only)
   sign-in-as/              # dev-mode user picker
 features/                  # One folder per feature; everything for X lives in X/
   patients/                #   the simplest case
@@ -89,13 +89,32 @@ Every feature follows the same shape: `repo.ts` is the only place Prisma is impo
 ### Key design decisions
 
 - **Money as Stripe-style integer minor units.** `Int priceCents` + explicit `currency` column. Avoids floating-point bugs and is multi-currency-ready without a migration.
-- **Price versioning via an append-only `Price` table.** Changing a price inserts a new `Price` row — never updates in place. Each `OrderItem` carries a `priceId` FK to the exact `Price` that was current at order time, so historical totals never drift.
+- **Price versioning via an append-only `Price` table.** Changing a price inserts a new `Price` row, never updating in place. Each `OrderItem` carries a `priceId` FK to the exact `Price` that was current at order time, so historical totals never drift.
 - **Order workflow as a pure state machine.** `canTransition(from, to)` is a pure function over an `ALLOWED_TRANSITIONS` map; unit tests cover the full 16-case truth table. Terminal states (COMPLETED, CANCELLED) reject all further transitions. The repo runs `load → assert → update → audit` inside one transaction so a failed audit rolls back the status change.
-- **Append-only audit log written atomically with the mutation.** Every state-changing action passes a `tx` to `appendAuditLog(tx, …)`, so an audit row only exists when the underlying change committed. Per-action metadata (`from`/`to` status, cancellation reason, previous price) lives in a JSON column rather than schema sprawl.
-- **Dev-mode auth, production-shaped helper.** `getCurrentUser()` reads a signed cookie; `/sign-in-as` is a no-password user picker. Real auth (NextAuth/Lucia) would slot in behind the same helper with no call-site changes. Role gating happens at the repo boundary (`requireRole(actor, "ADMIN")`), not in the UI — the UI hides admin-only affordances as UX polish.
+- **Append-only audit log written atomically with the mutation.** Every state-changing action passes a `tx` to `appendAuditLog(tx, …)`, so an audit row only exists when the underlying change committed. Per-action metadata (`from`/`to` status, cancellation reason, previous price) lives in a JSON column rather than schema sprawl. The coverage rule is "every write that mutates a tracked entity writes one audit row"; new write paths must add a matching `appendAuditLog` call. Read-side access logging (HIPAA-style "who looked at whose record") is a separate concern not implemented here.
+- **Dev-mode auth, production-shaped helper.** `getCurrentUser()` reads a signed cookie; `/sign-in-as` is a no-password user picker. Real auth would slot in behind the same helper with no call-site changes. Role gating happens at the repo boundary (`requireRole(actor, "ADMIN")`), not in the UI; the UI hides admin-only affordances as UX polish.
 - **Feature-first folders.** Everything for a feature lives in `features/<name>/`. `lib/` is reserved for genuinely cross-cutting helpers; `app/` is routing only.
 - **Repos are the only place Prisma is imported.** Pages and server actions go through `features/*/repo.ts`.
 - **Server actions + server-side zod.** No client-side fetch layer, no react-hook-form. Field errors surface back into the form via `useActionState`.
+
+### Why an audit log, not event sourcing
+
+An order's current status lives in two places: the `Order.status` column and the `ORDER_STATUS_CHANGED` rows in the audit log. They stay in sync because every change goes through `transitionOrder()`, which writes both in one transaction. Nothing in the schema _forces_ them to agree.
+
+**Event sourcing** would make the audit log the only source of truth. `Order.status` wouldn't be stored; it would be computed by reading the order's events and applying them in order. One source, no possibility of drift.
+
+I went with the simpler audit-log-plus-column model for now:
+
+- **The two writes are already atomic.** They happen inside one Postgres transaction, so they either both succeed or both fail. The "friends don't let friends write twice" warning is about writes across systems you can't commit together (e.g. database + Kafka), not two rows in one transaction.
+- **Reading is simpler.** "Show me all in-progress orders" is one indexed query. With event sourcing it's either a replay per order (slow) or a cached column (which is what we already have).
+- **No good reason to add the complexity.** Replaying events, handling old event shapes, and reasoning about read-after-write timing are all real costs. They pay off when the requirements demand them. They don't here.
+
+When I'd revisit:
+
+- If we need to publish order changes to another system (billing, notifications), the event log becomes the natural shared feed.
+- If regulators ever require reconstructing an order's exact state at any past moment, replay-from-events is the cleanest answer.
+
+What this design _doesn't_ protect against: someone running a one-off script that updates `Order.status` directly without writing an audit row. Today the only thing stopping that is the `transitionOrder` choke point plus the test that asserts every transition writes a matching audit entry. A structural fix would be event sourcing or a database trigger that writes the audit row automatically.
 
 ### Testing strategy
 
@@ -108,17 +127,17 @@ Every feature follows the same shape: `repo.ts` is the only place Prisma is impo
 - **Auth is dev-mode only.** No passwords, no session expiry, no CSRF defenses beyond Next's defaults. The `getCurrentUser()` / `requireRole()` helpers and the `User`+`Role` schema are shaped so NextAuth/Lucia could slot in without changing call sites.
 - **Audit log is append-only by convention, not WORM.** A determined operator with DB access could mutate or delete rows. Production would back it with append-only storage (or ship to a separate logging service) for tamper resistance.
 - **Role policy is coarse.** Two roles (`CLINICIAN`, `ADMIN`); ADMIN gates lab-test creation and price changes (catalog mutations). Order workflow transitions are open to any signed-in user. Real RBAC would scope by patient/department/ordering provider.
-- **Prod migration for price versioning + `createdByUserId` isn't implemented.** Both migrations drop or add required columns outright — fine for a take-home where reviewers reset the DB. A real cutover would backfill (a `Price` row per existing `LabTest`; a system `User` for legacy orders) before dropping or constraining anything.
+- **Prod migration for price versioning + `createdByUserId` isn't implemented.** Both migrations drop or add required columns outright, which is fine for a take-home where reviewers reset the DB. A real cutover would backfill (a `Price` row per existing `LabTest`; a system `User` for legacy orders) before dropping or constraining anything.
 - **No edit or delete on patients/orders.** Create-only. Deleting a lab test would also need a deprecation pattern since orders reference prices via FK.
 - **Turnaround isn't versioned.** Mutable on `LabTest`, snapshotted on `OrderItem`. The same `Price`-style treatment would apply if SLAs ever changed.
-- **No pagination/search, no optimistic UI.** Deliberately deferred — the seed data is small enough that none of these hurt the demo.
+- **No pagination/search, no optimistic UI.** Deliberately deferred; the seed data is small enough that none of these hurt the demo.
 - **USD only.** Schema and formatter are multi-currency ready, but seeds are USD and the order form rejects mixed-currency selections.
 
 ## With more time I'd add
 
 - Swap the cookie stub for real auth (NextAuth or Lucia) behind the existing `getCurrentUser()` helper. Tamper-resistant audit storage (append-only WORM or a separate logging service). Finer-grained RBAC scoped by patient/department.
 - Patient edit + soft-delete (`deletedAt`) with a "show archived" toggle.
-- Filter/search on the orders list (by patient, status, date range) — the `status` column is already indexed for this.
+- Filter/search on the orders list (by patient, status, date range). The `status` column is already indexed for this.
 - A more deliberate cut of project-level agent skills in `.claude/skills/`. The current set was inherited from my personal config; a team-shared set should be curated to match the project's stack and conventions.
 - Better empty/loading/error states; right now we lean on Next's defaults.
 - A few Playwright happy-path E2E tests against the running app.
@@ -127,12 +146,12 @@ Every feature follows the same shape: `repo.ts` is the only place Prisma is impo
 
 ## AI assistance
 
-Built with **Claude Code** (Claude Opus 4.7) for scaffolding and boilerplate. Every decision under "Key design decisions" and "Trade-offs" was mine — I directed Claude rather than accepting output wholesale. Notable cases I drove:
+Built with **Claude Code** (Claude Opus 4.7) for scaffolding and boilerplate. Every decision under "Key design decisions" and "Trade-offs" was mine; I directed Claude rather than accepting output wholesale. Notable cases I drove:
 
 - Integer-cents money model instead of `Decimal`.
 - Feature-first folders after an initial layered (`db`/`domain`/`actions`/`validation`) version proved hard to navigate.
 - Append-only `Price` table for price versioning, instead of mutating `LabTest.priceCents` and relying on snapshot copies.
-- Append-only `AuditLog` written in the same transaction as the mutation it records — an audit row only exists when the change committed.
+- Append-only `AuditLog` written in the same transaction as the mutation it records, so an audit row only exists when the change committed.
 - Order workflow modeled as a pure `canTransition(from, to)` state machine with a 16-case truth-table test, rather than scattering `if (status === ...)` checks across the repo.
 
-The commit history is the process narrative — each commit records the specific principle the step was grounded in.
+The commit history is the process narrative. Each commit records the specific principle the step was grounded in.
