@@ -1,14 +1,17 @@
 "use client";
 
 import { useActionState } from "react";
+import type { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { createPatientAction } from "./actions";
-import { idleState } from "@/lib/form-state";
+import type { patientSchema } from "./schema";
+import { idleState, type FormState } from "@/lib/form-state";
 
-const inputCls =
-  "h-10 px-3 text-[15px] bg-card";
+type PatientFields = keyof z.infer<typeof patientSchema>;
+
+const inputCls = "h-10 px-3 text-[15px] bg-card";
 
 function FieldError({ messages }: { messages?: string[] }) {
   if (!messages?.length) return null;
@@ -24,12 +27,11 @@ function Optional() {
 }
 
 export function PatientForm() {
-  const [state, formAction, pending] = useActionState(
-    createPatientAction,
-    idleState,
-  );
-  const fieldErrors =
-    state.status === "error" ? state.fieldErrors ?? {} : {};
+  const [state, formAction, pending] = useActionState<
+    FormState<PatientFields>,
+    FormData
+  >(createPatientAction, idleState);
+  const fieldErrors = state.status === "error" ? state.fieldErrors : undefined;
 
   return (
     <form
@@ -46,7 +48,7 @@ export function PatientForm() {
             required
             className={inputCls}
           />
-          <FieldError messages={fieldErrors.firstName} />
+          <FieldError messages={fieldErrors?.firstName} />
         </div>
         <div className="space-y-2">
           <Label htmlFor="lastName">Last name</Label>
@@ -57,7 +59,7 @@ export function PatientForm() {
             required
             className={inputCls}
           />
-          <FieldError messages={fieldErrors.lastName} />
+          <FieldError messages={fieldErrors?.lastName} />
         </div>
       </div>
 
@@ -70,7 +72,7 @@ export function PatientForm() {
           required
           className={`${inputCls} sm:max-w-[14rem] tabular-nums`}
         />
-        <FieldError messages={fieldErrors.dateOfBirth} />
+        <FieldError messages={fieldErrors?.dateOfBirth} />
       </div>
 
       <div className="grid sm:grid-cols-2 gap-5">
@@ -86,7 +88,7 @@ export function PatientForm() {
             placeholder="name@example.com"
             className={inputCls}
           />
-          <FieldError messages={fieldErrors.email} />
+          <FieldError messages={fieldErrors?.email} />
         </div>
         <div className="space-y-2">
           <Label htmlFor="phone">
@@ -100,11 +102,11 @@ export function PatientForm() {
             placeholder="(555) 555-0123"
             className={inputCls}
           />
-          <FieldError messages={fieldErrors.phone} />
+          <FieldError messages={fieldErrors?.phone} />
         </div>
       </div>
 
-      {state.status === "error" && !Object.keys(fieldErrors).length && (
+      {state.status === "error" && !fieldErrors && (
         <p className="text-sm text-destructive">{state.message}</p>
       )}
 

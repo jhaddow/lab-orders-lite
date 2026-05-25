@@ -2,14 +2,17 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import type { z } from "zod";
 import { createOrder, OrderValidationError } from "./repo";
 import { orderSchema } from "./schema";
 import type { FormState } from "@/lib/form-state";
 
+type OrderFields = keyof z.infer<typeof orderSchema>;
+
 export async function createOrderAction(
-  _prev: FormState,
+  _prev: FormState<OrderFields>,
   formData: FormData,
-): Promise<FormState> {
+): Promise<FormState<OrderFields>> {
   const parsed = orderSchema.safeParse({
     patientId: formData.get("patientId"),
     labTestIds: formData.getAll("labTestIds"),
@@ -19,7 +22,7 @@ export async function createOrderAction(
     return {
       status: "error",
       message: "Please correct the errors below.",
-      fieldErrors: parsed.error.flatten().fieldErrors as Record<string, string[]>,
+      fieldErrors: parsed.error.flatten().fieldErrors,
     };
   }
 

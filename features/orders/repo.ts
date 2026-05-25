@@ -13,6 +13,7 @@ export class OrderValidationError extends Error {
   constructor(message: string) {
     super(message);
     this.name = "OrderValidationError";
+    Error.captureStackTrace?.(this, OrderValidationError);
   }
 }
 
@@ -55,13 +56,19 @@ export async function createOrder(input: CreateOrderInput) {
     throw new OrderValidationError("One or more lab tests not found");
   }
 
-  const currencies = new Set(labTests.map((t) => t.currency));
-  if (currencies.size > 1) {
+  // Destructure so the head is typed as LabTest (non-undefined), even with
+  // noUncheckedIndexedAccess; we've already proven the array is non-empty
+  // via the labTestIds length check at the top of this function.
+  const [head, ...rest] = labTests;
+  if (!head) {
+    throw new OrderValidationError("Order must include at least one lab test");
+  }
+  if (rest.some((t) => t.currency !== head.currency)) {
     throw new OrderValidationError(
       "All lab tests in an order must share the same currency",
     );
   }
-  const currency = labTests[0].currency;
+  const currency = head.currency;
 
   const items = labTests.map((t) => ({
     labTestId: t.id,

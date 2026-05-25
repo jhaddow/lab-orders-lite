@@ -10,7 +10,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { getOrders } from "@/features/orders/repo";
-import { formatMoney } from "@/lib/money";
+import { asCurrency, formatMoney } from "@/lib/money";
 
 function formatDate(d: Date) {
   return new Intl.DateTimeFormat("en-US", { dateStyle: "medium" }).format(d);
@@ -93,7 +93,7 @@ export default async function OrdersPage() {
                     </Badge>
                   </TableCell>
                   <TableCell className="py-4 text-right font-medium tabular-nums text-foreground">
-                    {formatMoney(o.totalCents, o.currency)}
+                    {formatMoney(o.totalCents, asCurrency(o.currency))}
                   </TableCell>
                   <TableCell className="py-4 text-muted-foreground tabular-nums">
                     {formatDate(o.createdAt)}

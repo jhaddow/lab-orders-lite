@@ -4,8 +4,8 @@ export type CreatePatientInput = {
   firstName: string;
   lastName: string;
   dateOfBirth: Date;
-  email?: string | null;
-  phone?: string | null;
+  email?: string;
+  phone?: string;
 };
 
 export function getPatients() {

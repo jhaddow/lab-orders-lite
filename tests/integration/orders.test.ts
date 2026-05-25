@@ -75,7 +75,7 @@ describe("order repository", () => {
       });
 
       const fetched = await getOrder(order.id);
-      expect(fetched?.items[0].priceCentsAtOrder).toBe(4500);
+      expect(fetched?.items[0]?.priceCentsAtOrder).toBe(4500);
       expect(fetched?.totalCents).toBe(4500);
     });
 
@@ -122,8 +122,8 @@ describe("order repository", () => {
 
       const orders = await getOrders();
       expect(orders.map((o) => o.id)).toEqual([second.id, first.id]);
-      expect(orders[0].patient.firstName).toBe("Test");
-      expect(orders[0].items[0].labTest.code).toBe("BMP");
+      expect(orders[0]?.patient.firstName).toBe("Test");
+      expect(orders[0]?.items[0]?.labTest.code).toBe("BMP");
     });
 
     it("returns null for a missing order", async () => {

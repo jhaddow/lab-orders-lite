@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useMemo, useState } from "react";
+import type { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
@@ -11,20 +12,21 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import type { LabTest, Patient } from "@/lib/generated/prisma/client";
 import { calculateEstimatedReadyDate, calculateOrderTotalCents } from "./domain";
-import { formatMoney } from "@/lib/money";
+import { asCurrency, formatMoney } from "@/lib/money";
 import { createOrderAction } from "./actions";
-import { idleState } from "@/lib/form-state";
+import type { orderSchema } from "./schema";
+import { idleState, type FormState } from "@/lib/form-state";
 
-export type PatientOption = { id: string; firstName: string; lastName: string };
-export type LabTestOption = {
-  id: string;
-  code: string;
-  name: string;
-  priceCents: number;
-  currency: string;
-  turnaroundDays: number;
-};
+type OrderFields = keyof z.infer<typeof orderSchema>;
+
+// Derived from the Prisma models so renaming a column updates these in one place.
+export type PatientOption = Pick<Patient, "id" | "firstName" | "lastName">;
+export type LabTestOption = Pick<
+  LabTest,
+  "id" | "code" | "name" | "priceCents" | "currency" | "turnaroundDays"
+>;
 
 function FieldError({ messages }: { messages?: string[] }) {
   if (!messages?.length) return null;
@@ -42,14 +44,13 @@ export function OrderForm({
   patients: PatientOption[];
   labTests: LabTestOption[];
 }) {
-  const [state, formAction, pending] = useActionState(
-    createOrderAction,
-    idleState,
-  );
+  const [state, formAction, pending] = useActionState<
+    FormState<OrderFields>,
+    FormData
+  >(createOrderAction, idleState);
   const [patientId, setPatientId] = useState<string>("");
   const [selectedTestIds, setSelectedTestIds] = useState<Set<string>>(new Set());
-  const fieldErrors =
-    state.status === "error" ? state.fieldErrors ?? {} : {};
+  const fieldErrors = state.status === "error" ? state.fieldErrors : undefined;
 
   const selectedTests = useMemo(
     () => labTests.filter((t) => selectedTestIds.has(t.id)),
@@ -57,18 +58,17 @@ export function OrderForm({
   );
 
   const preview = useMemo(() => {
-    if (selectedTests.length === 0) return null;
+    const [head, ...rest] = selectedTests;
+    if (!head) return null;
     const items = selectedTests.map((t) => ({
       priceCentsAtOrder: t.priceCents,
       turnaroundDaysAtOrder: t.turnaroundDays,
     }));
-    const total = calculateOrderTotalCents(items);
-    const ready = calculateEstimatedReadyDate(new Date(), items);
     return {
-      total,
-      currency: selectedTests[0].currency,
-      readyDate: ready,
-      count: selectedTests.length,
+      total: calculateOrderTotalCents(items),
+      currency: asCurrency(head.currency),
+      readyDate: calculateEstimatedReadyDate(new Date(), items),
+      count: 1 + rest.length,
     };
   }, [selectedTests]);
 
@@ -111,7 +111,7 @@ export function OrderForm({
               )}
             </SelectContent>
           </Select>
-          <FieldError messages={fieldErrors.patientId} />
+          <FieldError messages={fieldErrors?.patientId} />
         </div>
       </section>
 
@@ -152,14 +152,14 @@ export function OrderForm({
                     </div>
                   </div>
                   <div className="text-[15px] font-medium tabular-nums text-foreground">
-                    {formatMoney(t.priceCents, t.currency)}
+                    {formatMoney(t.priceCents, asCurrency(t.currency))}
                   </div>
                 </div>
               </label>
             );
           })}
         </div>
-        <FieldError messages={fieldErrors.labTestIds} />
+        <FieldError messages={fieldErrors?.labTestIds} />
       </section>
 
       {preview && (
@@ -194,7 +194,7 @@ export function OrderForm({
         </section>
       )}
 
-      {state.status === "error" && !Object.keys(fieldErrors).length && (
+      {state.status === "error" && !fieldErrors && (
         <p className="text-sm text-destructive">{state.message}</p>
       )}
 

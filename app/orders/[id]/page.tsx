@@ -10,7 +10,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { getOrder } from "@/features/orders/repo";
-import { formatMoney } from "@/lib/money";
+import { asCurrency, formatMoney } from "@/lib/money";
 
 function formatDate(d: Date) {
   return new Intl.DateTimeFormat("en-US", { dateStyle: "medium" }).format(d);
@@ -24,6 +24,7 @@ export default async function OrderDetailPage({
   const { id } = await params;
   const order = await getOrder(id);
   if (!order) notFound();
+  const currency = asCurrency(order.currency);
 
   return (
     <div className="space-y-10">
@@ -69,7 +70,7 @@ export default async function OrderDetailPage({
           />
           <Stat
             label="Total cost"
-            value={formatMoney(order.totalCents, order.currency)}
+            value={formatMoney(order.totalCents, currency)}
             note={`Ordered ${formatDate(order.createdAt)}`}
             highlight
           />
@@ -120,7 +121,7 @@ export default async function OrderDetailPage({
                     {item.turnaroundDaysAtOrder}d
                   </TableCell>
                   <TableCell className="pr-5 py-4 text-right font-medium tabular-nums text-foreground">
-                    {formatMoney(item.priceCentsAtOrder, order.currency)}
+                    {formatMoney(item.priceCentsAtOrder, currency)}
                   </TableCell>
                 </TableRow>
               ))}
@@ -131,7 +132,7 @@ export default async function OrderDetailPage({
                   Total
                 </td>
                 <td className="pr-5 py-3.5 text-right font-display text-lg tabular-nums text-foreground">
-                  {formatMoney(order.totalCents, order.currency)}
+                  {formatMoney(order.totalCents, currency)}
                 </td>
               </tr>
             </tfoot>
