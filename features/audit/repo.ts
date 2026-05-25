@@ -26,15 +26,7 @@ export function appendAuditLog(
   tx: Prisma.TransactionClient | typeof prisma,
   input: AppendAuditInput,
 ) {
-  return tx.auditLog.create({
-    data: {
-      actorId: input.actorId,
-      action: input.action,
-      entityType: input.entityType,
-      entityId: input.entityId,
-      metadata: input.metadata,
-    },
-  });
+  return tx.auditLog.create({ data: input });
 }
 
 export function listAuditEntriesForEntity(entityType: string, entityId: string) {

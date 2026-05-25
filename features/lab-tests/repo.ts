@@ -14,7 +14,6 @@ export class LabTestValidationError extends Error {
   constructor(message: string) {
     super(message);
     this.name = "LabTestValidationError";
-    Error.captureStackTrace?.(this, LabTestValidationError);
   }
 }
 
@@ -108,7 +107,7 @@ export async function createLabTest(input: CreateLabTestInput, actor: User) {
 }
 
 /**
- * Append a new Price record for a lab test. Prices are immutable — changing
+ * Append a new Price record for a lab test. Prices are immutable; changing
  * a price always means creating a new record so historical orders keep
  * referencing the price that was current when they were placed.
  *
