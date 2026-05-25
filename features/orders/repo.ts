@@ -1,7 +1,6 @@
 import type { User } from "@/lib/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { appendAuditLog } from "@/features/audit/repo";
-import { requireRole } from "@/lib/auth";
 import {
   assertTransition,
   calculateEstimatedReadyDate,
@@ -189,7 +188,6 @@ export async function startOrder(orderId: string, actor: User) {
 }
 
 export async function completeOrder(orderId: string, actor: User) {
-  requireRole(actor, "ADMIN");
   return transitionOrder(orderId, "COMPLETED", actor, { timestampField: "completedAt" });
 }
 

@@ -12,7 +12,6 @@ import {
   startOrder,
 } from "@/features/orders/repo";
 import { InvalidTransitionError } from "@/features/orders/domain";
-import { AuthorizationError } from "@/lib/auth";
 import { getSeedAdmin, getSeedClinician } from "./setup";
 
 async function setupPatient() {
@@ -235,17 +234,10 @@ describe("order workflow", () => {
     expect(audit[0]?.metadata).toMatchObject({ from: "PENDING", to: "IN_PROGRESS" });
   });
 
-  it("IN_PROGRESS → COMPLETED requires ADMIN; clinician is rejected", async () => {
+  it("IN_PROGRESS → COMPLETED works for a clinician and stamps completedAt", async () => {
     const { actor, order } = await newOrder();
     await startOrder(order.id, actor);
-    await expect(completeOrder(order.id, actor)).rejects.toBeInstanceOf(AuthorizationError);
-  });
-
-  it("IN_PROGRESS → COMPLETED works for an admin and stamps completedAt", async () => {
-    const { actor, order } = await newOrder();
-    const admin = await getSeedAdmin();
-    await startOrder(order.id, actor);
-    const completed = await completeOrder(order.id, admin);
+    const completed = await completeOrder(order.id, actor);
     expect(completed.status).toBe("COMPLETED");
     expect(completed.completedAt).not.toBeNull();
   });

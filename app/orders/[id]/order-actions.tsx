@@ -18,7 +18,6 @@ type CancelFields = keyof z.infer<typeof cancelOrderSchema>;
 type Props = {
   orderId: string;
   status: "PENDING" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
-  isAdmin: boolean;
 };
 
 function FieldError({ messages }: { messages?: string[] }) {
@@ -26,7 +25,7 @@ function FieldError({ messages }: { messages?: string[] }) {
   return <p className="text-xs text-destructive">{messages[0]}</p>;
 }
 
-export function OrderActions({ orderId, status, isAdmin }: Props) {
+export function OrderActions({ orderId, status }: Props) {
   const [showCancel, setShowCancel] = useState(false);
   const boundCancel = cancelOrderAction.bind(null, orderId);
   const [cancelState, cancelFormAction, cancelPending] = useActionState<
@@ -47,17 +46,12 @@ export function OrderActions({ orderId, status, isAdmin }: Props) {
             </Button>
           </form>
         )}
-        {status === "IN_PROGRESS" && isAdmin && (
+        {status === "IN_PROGRESS" && (
           <form action={completeOrderAction.bind(null, orderId)}>
             <Button type="submit" className="h-9">
               Complete
             </Button>
           </form>
-        )}
-        {status === "IN_PROGRESS" && !isAdmin && (
-          <span className="text-xs text-muted-foreground">
-            Only an admin can mark this order complete.
-          </span>
         )}
         {!showCancel && (
           <Button

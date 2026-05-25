@@ -22,7 +22,8 @@ function formatDate(d: Date) {
 
 export default async function OrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const [order, currentUser] = await Promise.all([getOrder(id), getCurrentUser()]);
+  // getCurrentUser redirects to /sign-in-as if no actor cookie is set — gates the page on auth.
+  const [order] = await Promise.all([getOrder(id), getCurrentUser()]);
   if (!order) notFound();
   const currency = asCurrency(order.currency);
   const maxTurnaroundDays = Math.max(...order.items.map((i) => i.turnaroundDaysAtOrder));
@@ -151,11 +152,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
         </div>
       </section>
 
-      <OrderActions
-        orderId={order.id}
-        status={order.status}
-        isAdmin={currentUser.role === "ADMIN"}
-      />
+      <OrderActions orderId={order.id} status={order.status} />
 
       <AuditTrail orderId={order.id} />
     </div>
