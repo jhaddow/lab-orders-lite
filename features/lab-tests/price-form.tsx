@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { useActionState } from "react";
 import type { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,23 +20,11 @@ function FieldError({ messages }: { messages?: string[] }) {
 
 export function PriceForm({ labTestId }: { labTestId: string }) {
   const boundAction = setLabTestPriceAction.bind(null, labTestId);
-  const [state, formAction, pending] = useActionState<
-    FormState<SetPriceFields>,
-    FormData
-  >(boundAction, idleState);
-  const [value, setValue] = useState("");
+  const [state, formAction, pending] = useActionState<FormState<SetPriceFields>, FormData>(
+    boundAction,
+    idleState,
+  );
   const fieldErrors = state.status === "error" ? state.fieldErrors : undefined;
-
-  // Clear the input after a successful submit (action settled to "idle"
-  // post-revalidate). We track pending->!pending edges so we don't clear
-  // while the user is typing in the initial idle state.
-  const [lastPending, setLastPending] = useState(false);
-  useEffect(() => {
-    if (lastPending && !pending && state.status === "idle") {
-      setValue("");
-    }
-    setLastPending(pending);
-  }, [pending, lastPending, state.status]);
 
   return (
     <form action={formAction} className="space-y-3">
@@ -55,8 +43,6 @@ export function PriceForm({ labTestId }: { labTestId: string }) {
               inputMode="decimal"
               required
               placeholder="0.00"
-              value={value}
-              onChange={(e) => setValue(e.target.value)}
               className={`${inputCls} pl-7 tabular-nums`}
             />
           </div>
