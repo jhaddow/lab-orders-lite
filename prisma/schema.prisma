@@ -24,7 +24,7 @@ model Patient {
 model LabTest {
   id             String   @id @default(cuid())
   code           String   @unique
-  name           String
+  name           String   @unique
   turnaroundDays Int
   createdAt      DateTime @default(now())
 

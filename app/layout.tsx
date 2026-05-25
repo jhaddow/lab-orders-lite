@@ -49,6 +49,8 @@ export default function RootLayout({
               <NavLink href="/patients">Patients</NavLink>
               <span className="mx-2 h-4 w-px bg-border" aria-hidden />
               <NavLink href="/orders">Orders</NavLink>
+              <span className="mx-2 h-4 w-px bg-border" aria-hidden />
+              <NavLink href="/lab-tests">Lab tests</NavLink>
             </nav>
           </div>
         </header>

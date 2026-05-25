@@ -54,6 +54,7 @@ The codebase is organised in **clear horizontal layers** so each layer has a sin
 app/                       # Next.js App Router — routing only
   patients/                #   /patients, /patients/new
   orders/                  #   /orders, /orders/new, /orders/[id]
+  lab-tests/               #   /lab-tests, /lab-tests/new, /lab-tests/[id]
 features/                  # One folder per feature; everything for X lives in X/
   patients/
     repo.ts                #   Prisma queries
@@ -66,7 +67,11 @@ features/                  # One folder per feature; everything for X lives in X
     domain.test.ts         #   colocated unit tests
     order-form.tsx         #   client form w/ live total + ready-date preview
   lab-tests/
-    repo.ts                #   getLabTests + setLabTestPrice
+    repo.ts                #   getLabTests, getLabTest, createLabTest, setLabTestPrice
+    actions.ts             #   create + set-price server actions
+    schema.ts              #   zod (dollars → cents transform)
+    lab-test-form.tsx      #   client form for creating a lab test
+    price-form.tsx         #   client form for appending a new Price
     seed-data.ts           #   canonical catalog (shared by seed + tests)
 lib/                       # Cross-cutting only
   prisma.ts                #   Prisma singleton (PrismaPg adapter)
@@ -101,7 +106,7 @@ vitest.config.ts           # Two projects: `unit` and `integration`
 | **Unit** | Pure domain logic: `calculateOrderTotalCents`, `calculateEstimatedReadyDate`, `formatMoney`. Covers happy paths, edge cases, large-integer exactness, mutation safety. | Vitest, no I/O |
 | **Integration** | Repository layer end-to-end against a real Postgres: patient CRUD, order creation with snapshot persistence, validation failures, lookups. | Vitest + real `lab_orders_lite_test` database; each test resets state via `$transaction` |
 
-29 tests total. The integration project runs in a single fork, sequentially, with module isolation off — needed because each test file otherwise gets its own Prisma client instance with a separate connection pool, which broke cross-instance visibility.
+46 tests total. The integration project runs in a single fork, sequentially, with module isolation off — needed because each test file otherwise gets its own Prisma client instance with a separate connection pool, which broke cross-instance visibility.
 
 The headline integration test for price versioning: *create an order with a lab test, append a new `Price` for that lab test, create another order — assert the first order still shows the old price and the second shows the new one.* Lives at `tests/integration/orders.test.ts` ("references the price that was current at order time, even after later price changes").
 
@@ -111,7 +116,7 @@ The headline integration test for price versioning: *create an order with a lab 
 
 - **No auth.** Out of scope for the brief.
 - **No edit/delete flows.** Patients and orders are create-only. A real app would need both — easy to add later but not on the critical path for "show me a meaningful slice."
-- **Lab test catalog is seeded, read-only from the UI.** No admin UI for adding tests or changing prices. Price changes happen via the `setLabTestPrice(labTestId, priceCents, currency)` repo function (used directly by tests and by the seed); a real product would surface this behind a Settings page.
+- **Lab test admin is intentionally minimal.** The catalog ships with a `/lab-tests` list, a `/lab-tests/new` form for adding a test (with case-insensitive name + code de-duplication), and `/lab-tests/[id]` showing the full price history plus a form to append a new price. No edit-name/turnaround flow yet, and no delete — orders reference prices via FK, so deletion would need a deprecation pattern.
 - **Turnaround is not versioned.** `LabTest.turnaroundDays` is mutable and `OrderItem.turnaroundDaysAtOrder` is a snapshot. The same `Price`-style versioning would be a natural follow-on if SLAs ever needed to change without rewriting history.
 - **Prod migration is not implemented.** The included migration drops `LabTest.priceCents`/`currency` and `OrderItem.priceCentsAtOrder` outright — fine for a take-home where reviewers reset the DB, but a real cutover would need a data migration: create a `Price` row per existing `LabTest`, backfill each `OrderItem.priceId` from the historical snapshot, *then* drop the old columns.
 - **No pagination / search / status filtering.** The brief lists these as optional and the data is small enough to not need them yet.
