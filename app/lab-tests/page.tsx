@@ -10,9 +10,11 @@ import {
 } from "@/components/ui/table";
 import { getLabTests } from "@/features/lab-tests/repo";
 import { asCurrency, formatMoney } from "@/lib/money";
+import { getCurrentUser } from "@/lib/auth";
 
 export default async function LabTestsPage() {
-  const labTests = await getLabTests();
+  const [labTests, currentUser] = await Promise.all([getLabTests(), getCurrentUser()]);
+  const canCreate = currentUser.role === "ADMIN";
 
   return (
     <div className="space-y-8">
@@ -21,25 +23,31 @@ export default async function LabTestsPage() {
           <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Catalog</p>
           <h1 className="font-display text-4xl tracking-tight">Lab tests</h1>
         </div>
-        <Link href="/lab-tests/new" className={`${buttonVariants()} h-10 px-4`}>
-          New lab test
-        </Link>
+        {canCreate && (
+          <Link href="/lab-tests/new" className={`${buttonVariants()} h-10 px-4`}>
+            New lab test
+          </Link>
+        )}
       </header>
 
       {labTests.length === 0 ? (
         <div className="rounded-xl border border-dashed border-border bg-card/50 p-12 text-center space-y-3">
           <p className="font-display text-xl text-foreground">No lab tests yet</p>
           <p className="text-sm text-muted-foreground">
-            Add your first lab test to start taking orders.
+            {canCreate
+              ? "Add your first lab test to start taking orders."
+              : "An admin needs to add a lab test before orders can be created."}
           </p>
-          <div className="pt-1">
-            <Link
-              href="/lab-tests/new"
-              className={`${buttonVariants({ variant: "outline" })} h-9 px-4`}
-            >
-              Add lab test
-            </Link>
-          </div>
+          {canCreate && (
+            <div className="pt-1">
+              <Link
+                href="/lab-tests/new"
+                className={`${buttonVariants({ variant: "outline" })} h-9 px-4`}
+              >
+                Add lab test
+              </Link>
+            </div>
+          )}
         </div>
       ) : (
         <div className="rounded-xl border border-border bg-card overflow-hidden">

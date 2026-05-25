@@ -11,6 +11,7 @@ import {
 import { getLabTest } from "@/features/lab-tests/repo";
 import { PriceForm } from "@/features/lab-tests/price-form";
 import { asCurrency, formatMoney } from "@/lib/money";
+import { getCurrentUser } from "@/lib/auth";
 
 function formatDateTime(d: Date) {
   return new Intl.DateTimeFormat("en-US", {
@@ -21,9 +22,10 @@ function formatDateTime(d: Date) {
 
 export default async function LabTestDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const labTest = await getLabTest(id);
+  const [labTest, currentUser] = await Promise.all([getLabTest(id), getCurrentUser()]);
   if (!labTest) notFound();
   const current = labTest.prices[0];
+  const canEditPrice = currentUser.role === "ADMIN";
 
   return (
     <div className="space-y-10">
@@ -50,7 +52,13 @@ export default async function LabTestDetailPage({ params }: { params: Promise<{ 
         aria-label="Test summary"
         className="rounded-xl border border-border bg-card overflow-hidden"
       >
-        <div className="grid sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-border">
+        <div
+          className={
+            canEditPrice
+              ? "grid sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-border"
+              : ""
+          }
+        >
           <div className="px-5 py-5 bg-accent/30">
             <div className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
               Current price
@@ -65,10 +73,17 @@ export default async function LabTestDetailPage({ params }: { params: Promise<{ 
             <div className="mt-1 text-xs text-muted-foreground tabular-nums">
               {current ? `Set ${formatDateTime(current.createdAt)}` : "No price set"}
             </div>
+            {!canEditPrice && (
+              <p className="mt-3 text-xs text-muted-foreground">
+                Admin role required to change the price.
+              </p>
+            )}
           </div>
-          <div className="px-5 py-5">
-            <PriceForm labTestId={labTest.id} />
-          </div>
+          {canEditPrice && (
+            <div className="px-5 py-5">
+              <PriceForm labTestId={labTest.id} />
+            </div>
+          )}
         </div>
       </section>
 
