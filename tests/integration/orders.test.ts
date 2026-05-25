@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import { prisma } from "@/lib/prisma";
 import { createPatient } from "@/features/patients/repo";
 import {
@@ -23,10 +23,10 @@ async function getLabTestIdByCode(code: string) {
 
 describe("order repository", () => {
   describe("createOrder", () => {
-    it("creates an order with snapshotted price and turnaround", async () => {
+    it("creates an order with total, currency, and PENDING status", async () => {
       const patient = await setupPatient();
-      const cbcId = await getLabTestIdByCode("CBC");      // 4500c / 1d
-      const lipidId = await getLabTestIdByCode("LIPID");  // 6800c / 2d
+      const cbcId = await getLabTestIdByCode("CBC");      // 4500c
+      const lipidId = await getLabTestIdByCode("LIPID");  // 6800c
 
       const order = await createOrder({
         patientId: patient.id,
@@ -37,6 +37,17 @@ describe("order repository", () => {
       expect(order.currency).toBe("USD");
       expect(order.status).toBe("PENDING");
       expect(order.items).toHaveLength(2);
+    });
+
+    it("snapshots price and turnaround onto each line item", async () => {
+      const patient = await setupPatient();
+      const cbcId = await getLabTestIdByCode("CBC");      // 4500c / 1d
+      const lipidId = await getLabTestIdByCode("LIPID");  // 6800c / 2d
+
+      const order = await createOrder({
+        patientId: patient.id,
+        labTestIds: [cbcId, lipidId],
+      });
 
       const snapshotted = order.items.map((i) => ({
         priceCentsAtOrder: i.priceCentsAtOrder,
@@ -50,15 +61,26 @@ describe("order repository", () => {
         priceCentsAtOrder: 6800,
         turnaroundDaysAtOrder: 2,
       });
+    });
 
-      // estimatedReadyDate = createdAt + max turnaround (2 days)
-      const diffMs = order.estimatedReadyDate.getTime() - order.createdAt.getTime();
-      // DATE column truncates time, so compare to start-of-day of expected
-      const expected = new Date(order.createdAt);
-      expected.setUTCDate(expected.getUTCDate() + 2);
-      expected.setUTCHours(0, 0, 0, 0);
-      expect(order.estimatedReadyDate.getTime()).toBe(expected.getTime());
-      expect(diffMs).toBeGreaterThan(0);
+    it("computes estimatedReadyDate from the slowest test's turnaround", async () => {
+      const patient = await setupPatient();
+      const cbcId = await getLabTestIdByCode("CBC");      // 1d
+      const lipidId = await getLabTestIdByCode("LIPID");  // 2d
+      const tshId = await getLabTestIdByCode("TSH");      // 3d (the slowest)
+
+      const order = await createOrder(
+        {
+          patientId: patient.id,
+          labTestIds: [cbcId, lipidId, tshId],
+        },
+        { now: new Date("2026-05-25T12:00:00.000Z") },
+      );
+
+      // 2026-05-25 + 3 days = 2026-05-28 (DATE column drops time)
+      expect(order.estimatedReadyDate.toISOString().slice(0, 10)).toBe(
+        "2026-05-28",
+      );
     });
 
     it("preserves snapshot when underlying lab test price changes later", async () => {
@@ -99,6 +121,28 @@ describe("order repository", () => {
         createOrder({
           patientId: patient.id,
           labTestIds: ["does-not-exist"],
+        }),
+      ).rejects.toBeInstanceOf(OrderValidationError);
+    });
+
+    it("rejects an order whose lab tests have mixed currencies", async () => {
+      const patient = await setupPatient();
+      const cbcId = await getLabTestIdByCode("CBC");  // USD
+      // Insert a non-USD test to force the mismatch
+      const eurTest = await prisma.labTest.create({
+        data: {
+          code: "EUR_TEST",
+          name: "Euro Lab Test",
+          priceCents: 1000,
+          currency: "EUR",
+          turnaroundDays: 1,
+        },
+      });
+
+      await expect(
+        createOrder({
+          patientId: patient.id,
+          labTestIds: [cbcId, eurTest.id],
         }),
       ).rejects.toBeInstanceOf(OrderValidationError);
     });

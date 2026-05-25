@@ -9,6 +9,12 @@ export type CreateOrderInput = {
   labTestIds: string[];
 };
 
+export type CreateOrderOptions = {
+  /** Injectable clock — defaults to `new Date()`. Tests pass a fixed value
+   *  for deterministic estimatedReadyDate assertions. */
+  now?: Date;
+};
+
 export class OrderValidationError extends Error {
   constructor(message: string) {
     super(message);
@@ -37,7 +43,10 @@ export function getOrder(id: string) {
   });
 }
 
-export async function createOrder(input: CreateOrderInput) {
+export async function createOrder(
+  input: CreateOrderInput,
+  options: CreateOrderOptions = {},
+) {
   if (input.labTestIds.length === 0) {
     throw new OrderValidationError("An order must include at least one lab test");
   }
@@ -76,7 +85,7 @@ export async function createOrder(input: CreateOrderInput) {
     turnaroundDaysAtOrder: t.turnaroundDays,
   }));
 
-  const createdAt = new Date();
+  const createdAt = options.now ?? new Date();
   const totalCents = calculateOrderTotalCents(items);
   const estimatedReadyDate = calculateEstimatedReadyDate(createdAt, items);
 
