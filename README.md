@@ -145,4 +145,4 @@ Per the brief, this was built with **Claude Code** (Claude Opus 4.7) assisting w
 - Adopted server actions + server-side zod validation instead of pulling in react-hook-form.
 - Replaced naive `LabTest.priceCents` mutation with an append-only `Price` table, so changing a price preserves order history at the database level rather than via copy-on-write snapshots.
 
-The plan I worked from lives at `.claude/plan/PLAN.md`.
+The seven-commit history (`git log`) is the process narrative; each commit message records the specific principle or skill the step was grounded in.
