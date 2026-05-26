@@ -9,12 +9,14 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { getPatients } from "@/features/patients/repo";
+import { getCurrentUser } from "@/lib/auth";
 
 function formatDate(d: Date) {
   return new Intl.DateTimeFormat("en-US", { dateStyle: "medium" }).format(d);
 }
 
 export default async function PatientsPage() {
+  await getCurrentUser();
   const patients = await getPatients();
 
   return (

@@ -11,6 +11,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { getOrders } from "@/features/orders/repo";
+import { getCurrentUser } from "@/lib/auth";
 import { asCurrency, formatMoney } from "@/lib/money";
 
 function formatDate(d: Date) {
@@ -18,6 +19,7 @@ function formatDate(d: Date) {
 }
 
 export default async function OrdersPage() {
+  await getCurrentUser();
   const orders = await getOrders();
 
   return (

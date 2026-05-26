@@ -3,8 +3,10 @@ import { buttonVariants } from "@/components/ui/button";
 import { OrderForm, type LabTestOption } from "@/features/orders/order-form";
 import { getPatients } from "@/features/patients/repo";
 import { getLabTests } from "@/features/lab-tests/repo";
+import { getCurrentUser } from "@/lib/auth";
 
 export default async function NewOrderPage() {
+  await getCurrentUser();
   const [patients, labTests] = await Promise.all([getPatients(), getLabTests()]);
 
   // Skip any lab test that doesn't yet have a price (invariant violation
