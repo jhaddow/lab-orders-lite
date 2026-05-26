@@ -37,10 +37,6 @@ export const createLabTestSchema = z.object({
   initialPriceCents: dollarsField,
 });
 
-export type CreateLabTestSchemaInput = z.infer<typeof createLabTestSchema>;
-
 export const setPriceSchema = z.object({
   priceCents: dollarsField,
 });
-
-export type SetPriceSchemaInput = z.infer<typeof setPriceSchema>;

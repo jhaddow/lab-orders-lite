@@ -5,10 +5,6 @@ export const orderSchema = z.object({
   labTestIds: z.array(z.string().min(1)).min(1, "Select at least one lab test"),
 });
 
-export type OrderInput = z.infer<typeof orderSchema>;
-
 export const cancelOrderSchema = z.object({
   reason: z.string().trim().min(1, "Please give a reason").max(500),
 });
-
-export type CancelOrderInput = z.infer<typeof cancelOrderSchema>;

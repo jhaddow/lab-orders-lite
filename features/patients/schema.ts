@@ -27,5 +27,3 @@ export const patientSchema = z.object({
     .optional()
     .transform((v) => (v ? v : undefined)),
 });
-
-export type PatientInput = z.infer<typeof patientSchema>;

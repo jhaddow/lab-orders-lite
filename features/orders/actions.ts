@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import type { z } from "zod";
-import { AuthorizationError, getCurrentUser } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth";
 import { cancelOrder, completeOrder, createOrder, OrderValidationError, startOrder } from "./repo";
 import { cancelOrderSchema, orderSchema } from "./schema";
 import { InvalidTransitionError } from "./domain";
@@ -48,7 +48,6 @@ export async function createOrderAction(
 function transitionErrorMessage(err: unknown): string | null {
   if (err instanceof OrderValidationError) return err.message;
   if (err instanceof InvalidTransitionError) return err.message;
-  if (err instanceof AuthorizationError) return err.message;
   return null;
 }
 

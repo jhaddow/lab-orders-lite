@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { setActingUserCookie, clearActingUserCookie } from "@/lib/auth";
+import { setActingUserCookie } from "@/lib/auth";
 import { getUserById } from "@/features/users/repo";
 
 export async function signInAsAction(formData: FormData): Promise<void> {
@@ -17,10 +17,4 @@ export async function signInAsAction(formData: FormData): Promise<void> {
   await setActingUserCookie(userId);
   revalidatePath("/", "layout");
   redirect("/");
-}
-
-export async function signOutAction(): Promise<void> {
-  await clearActingUserCookie();
-  revalidatePath("/", "layout");
-  redirect("/sign-in-as");
 }

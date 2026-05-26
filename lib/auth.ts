@@ -51,8 +51,3 @@ export async function setActingUserCookie(userId: string): Promise<void> {
     maxAge: COOKIE_MAX_AGE_SECONDS,
   });
 }
-
-export async function clearActingUserCookie(): Promise<void> {
-  const jar = await cookies();
-  jar.delete(COOKIE_NAME);
-}
