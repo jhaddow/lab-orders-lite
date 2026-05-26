@@ -271,6 +271,54 @@ describe("order workflow", () => {
     await expect(startOrder(order.id, actor)).rejects.toBeInstanceOf(InvalidTransitionError);
   });
 
+  it("allows only one stale concurrent transition to win", async () => {
+    const { actor, order } = await newOrder();
+
+    let markLockAcquired!: () => void;
+    const lockAcquired = new Promise<void>((resolve) => {
+      markLockAcquired = resolve;
+    });
+    let releaseLock!: () => void;
+    const lockReleased = new Promise<void>((resolve) => {
+      releaseLock = resolve;
+    });
+
+    const lock = prisma.$transaction(
+      async (tx) => {
+        await tx.$queryRaw`SELECT id FROM "Order" WHERE id = ${order.id} FOR UPDATE`;
+        markLockAcquired();
+        await lockReleased;
+      },
+      { timeout: 10_000 },
+    );
+
+    await lockAcquired;
+    const competingTransitions = [
+      startOrder(order.id, actor),
+      cancelOrder(order.id, actor, "duplicate"),
+    ];
+
+    // Let both transactions read PENDING and block on their conditional update.
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    releaseLock();
+
+    const results = await Promise.allSettled(competingTransitions);
+    await lock;
+
+    const fulfilled = results.filter((r) => r.status === "fulfilled");
+    const rejected = results.filter((r) => r.status === "rejected");
+
+    expect(fulfilled).toHaveLength(1);
+    expect(rejected).toHaveLength(1);
+    expect(rejected[0]?.reason).toBeInstanceOf(OrderValidationError);
+
+    const audit = await prisma.auditLog.findMany({
+      where: { entityType: "Order", entityId: order.id, action: "ORDER_STATUS_CHANGED" },
+    });
+    expect(audit).toHaveLength(1);
+    expect(audit[0]?.metadata).toMatchObject({ from: "PENDING" });
+  });
+
   it("rejects a blank cancellation reason", async () => {
     const { actor, order } = await newOrder();
     await expect(cancelOrder(order.id, actor, "   ")).rejects.toBeInstanceOf(OrderValidationError);

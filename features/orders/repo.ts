@@ -135,8 +135,8 @@ export async function createOrder(
 }
 
 // Each transition loads the current order, asserts the move is allowed,
-// updates the row, and audits, all in one transaction so a failed audit
-// rolls back the status change.
+// updates the row only if the status is still unchanged, and audits, all in
+// one transaction so a failed audit rolls back the status change.
 async function transitionOrder(
   orderId: string,
   to: OrderStatus,
@@ -150,18 +150,32 @@ async function transitionOrder(
     const order = await tx.order.findUnique({ where: { id: orderId } });
     if (!order) throw new OrderValidationError(`Order ${orderId} not found`);
 
-    assertTransition(order.status as OrderStatus, to);
+    const from = order.status as OrderStatus;
+    assertTransition(from, to);
 
     const now = new Date();
-    const updated = await tx.order.update({
-      where: { id: orderId },
+    const updateResult = await tx.order.updateMany({
+      where: { id: orderId, status: from },
       data: {
         status: to,
         ...(extra.timestampField ? { [extra.timestampField]: now } : {}),
         ...(extra.cancellationReason ? { cancellationReason: extra.cancellationReason } : {}),
       },
+    });
+
+    if (updateResult.count !== 1) {
+      const current = await tx.order.findUnique({ where: { id: orderId } });
+      if (!current) throw new OrderValidationError(`Order ${orderId} not found`);
+      throw new OrderValidationError(
+        `Order status changed from ${from} to ${current.status}; reload and try again`,
+      );
+    }
+
+    const updated = await tx.order.findUnique({
+      where: { id: orderId },
       include: orderInclude,
     });
+    if (!updated) throw new OrderValidationError(`Order ${orderId} not found`);
 
     await appendAuditLog(tx, {
       actorId: actor.id,
@@ -169,7 +183,7 @@ async function transitionOrder(
       entityType: "Order",
       entityId: orderId,
       metadata: {
-        from: order.status,
+        from,
         to,
         ...(extra.cancellationReason ? { reason: extra.cancellationReason } : {}),
       },
