@@ -49,6 +49,8 @@ jobs:
 
       - run: pnpm typecheck
 
+      - run: pnpm build
+
       - run: pnpm exec prisma migrate deploy
 
       - run: pnpm test
