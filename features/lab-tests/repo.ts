@@ -1,6 +1,7 @@
 import type { User } from "@/lib/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { appendAuditLog } from "@/features/audit/repo";
+import { requireRole } from "@/lib/auth";
 
 export type CreateLabTestInput = {
   code: string;
@@ -50,6 +51,7 @@ export function getLabTest(id: string) {
  * both as a safety net.
  */
 export async function createLabTest(input: CreateLabTestInput, actor: User) {
+  requireRole(actor, "ADMIN");
   const trimmedName = input.name.trim();
   const trimmedCode = input.code.trim();
 
@@ -120,6 +122,7 @@ export async function setLabTestPrice(
   actor: User,
   currency: string = "USD",
 ) {
+  requireRole(actor, "ADMIN");
   if (priceCents <= 0) {
     throw new LabTestValidationError("Price must be greater than zero");
   }

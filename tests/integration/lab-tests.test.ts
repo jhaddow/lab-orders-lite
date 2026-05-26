@@ -6,7 +6,8 @@ import {
   LabTestValidationError,
   setLabTestPrice,
 } from "@/features/lab-tests/repo";
-import { getSeedAdmin } from "./setup";
+import { AuthorizationError } from "@/lib/auth";
+import { getSeedAdmin, getSeedClinician } from "./setup";
 
 describe("lab-test admin", () => {
   describe("createLabTest", () => {
@@ -158,6 +159,26 @@ describe("lab-test admin", () => {
       expect(audit).toHaveLength(1);
       expect(audit[0]?.action).toBe("LAB_TEST_PRICE_CHANGED");
       expect(audit[0]?.metadata).toMatchObject({ priceCents: 7700, previousPriceCents: 4500 });
+    });
+  });
+
+  describe("role gating", () => {
+    it("rejects createLabTest by a clinician", async () => {
+      const clinician = await getSeedClinician();
+      await expect(
+        createLabTest(
+          { code: "DENIED", name: "Denied Test", turnaroundDays: 1, initialPriceCents: 1000 },
+          clinician,
+        ),
+      ).rejects.toBeInstanceOf(AuthorizationError);
+    });
+
+    it("rejects setLabTestPrice by a clinician", async () => {
+      const clinician = await getSeedClinician();
+      const cbc = await prisma.labTest.findUniqueOrThrow({ where: { code: "CBC" } });
+      await expect(setLabTestPrice(cbc.id, 9999, clinician)).rejects.toBeInstanceOf(
+        AuthorizationError,
+      );
     });
   });
 });

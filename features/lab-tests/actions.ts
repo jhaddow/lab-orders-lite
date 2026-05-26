@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import type { z } from "zod";
-import { AuthorizationError, getCurrentUser, requireRole } from "@/lib/auth";
+import { AuthorizationError, getCurrentUser } from "@/lib/auth";
 import { createLabTest, LabTestValidationError, setLabTestPrice } from "./repo";
 import { createLabTestSchema, setPriceSchema } from "./schema";
 import type { FormState } from "@/lib/form-state";
@@ -16,14 +16,6 @@ export async function createLabTestAction(
   formData: FormData,
 ): Promise<FormState<CreateFields>> {
   const actor = await getCurrentUser();
-  try {
-    requireRole(actor, "ADMIN");
-  } catch (err) {
-    if (err instanceof AuthorizationError) {
-      return { status: "error", message: err.message };
-    }
-    throw err;
-  }
 
   const parsed = createLabTestSchema.safeParse({
     code: formData.get("code"),
@@ -45,7 +37,7 @@ export async function createLabTestAction(
     const created = await createLabTest(parsed.data, actor);
     createdId = created.id;
   } catch (err) {
-    if (err instanceof LabTestValidationError) {
+    if (err instanceof LabTestValidationError || err instanceof AuthorizationError) {
       return { status: "error", message: err.message };
     }
     throw err;
@@ -61,14 +53,6 @@ export async function setLabTestPriceAction(
   formData: FormData,
 ): Promise<FormState<SetPriceFields>> {
   const actor = await getCurrentUser();
-  try {
-    requireRole(actor, "ADMIN");
-  } catch (err) {
-    if (err instanceof AuthorizationError) {
-      return { status: "error", message: err.message };
-    }
-    throw err;
-  }
 
   const parsed = setPriceSchema.safeParse({
     priceCents: formData.get("priceCents"),
@@ -91,6 +75,9 @@ export async function setLabTestPriceAction(
         message: err.message,
         fieldErrors: { priceCents: [err.message] },
       };
+    }
+    if (err instanceof AuthorizationError) {
+      return { status: "error", message: err.message };
     }
     throw err;
   }
